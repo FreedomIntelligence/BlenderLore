@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedomintelligence.github.io/3D-Coding-Blender/schemas/blender-source-map-v1.json",
+  "title": "Blender source map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "targets", "generation_handoffs", "dependencies", "snapshot_digest", "inventory"],
+  "properties": {
+    "schema": {"const": "blender-source-map/v1"},
+    "source": {"$ref": "#/$defs/source"},
+    "targets": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}},
+    "generation_handoffs": {
+      "type": "array", "items": {"$ref": "#/$defs/generation_handoff"}
+    },
+    "dependencies": {"type": "array", "items": {"$ref": "#/$defs/dependency"}},
+    "snapshot_digest": {"$ref": "#/$defs/digest"},
+    "inventory": {
+      "type": "object", "additionalProperties": false, "required": ["objects", "materials", "collections"],
+      "properties": {
+        "objects": {"$ref": "#/$defs/names"}, "materials": {"$ref": "#/$defs/names"}, "collections": {"$ref": "#/$defs/names"}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "names": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["filename", "sha256"],
+      "properties": {"filename": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "dependency": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "name", "reference", "exists"],
+      "properties": {
+        "kind": {"type": "string"}, "name": {"type": "string"}, "reference": {"type": "string"}, "exists": {"const": true}
+      }
+    },
+    "generation_handoff": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target", "object", "attempt_receipt_file_sha256", "attempt_receipt_self_sha256", "asset_sha256", "task_id", "attempt", "rubric_score", "vlm_score"],
+      "properties": {
+        "target": {"type": "string", "minLength": 1},
+        "object": {"type": "string", "minLength": 1},
+        "attempt_receipt_file_sha256": {"$ref": "#/$defs/digest"},
+        "attempt_receipt_self_sha256": {"$ref": "#/$defs/digest"},
+        "asset_sha256": {"$ref": "#/$defs/digest"},
+        "task_id": {"type": "string"},
+        "attempt": {"type": "integer", "minimum": 1},
+        "rubric_score": {"type": "number", "minimum": 80, "maximum": 100},
+        "vlm_score": {"type": "number", "minimum": 80, "maximum": 100}
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "updated_through",
+    "recent_extraction_window",
+    "documents"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "manifest.schema.json"
+    },
+    "schema_version": {
+      "const": "blender-pipeline.knowledge-manifest.v1"
+    },
+    "updated_through": {
+      "type": "string",
+      "format": "date"
+    },
+    "recent_extraction_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "through"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date"
+        },
+        "through": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "scope", "title", "keywords"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*\\.md$"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["router", "shared", "generation", "editing"]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3
+          },
+          "keywords": {
+            "type": "array",
+            "minItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 2
+            }
+          }
+        }
+      }
+    }
+  }
+}

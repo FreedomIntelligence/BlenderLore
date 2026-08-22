@@ -1,0 +1,38 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Pipeline runtime output
+skills/blender-pipeline/**/.artifacts/
+skills/blender-pipeline/**/.cache/
+skills/blender-pipeline/**/output/
+skills/blender-pipeline/**/outputs/
+skills/blender-pipeline/**/runs/
+*.blend
+*.blend1
+*.glb
+*.gltf
+*.log
+*.sqlite
+
+# Platform metadata
+.DS_Store
+Thumbs.db

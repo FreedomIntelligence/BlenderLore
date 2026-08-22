@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blender-edit-pipeline"
+version = "0.1.0"
+description = "Contract-driven, scope-preserving edits of existing Blender projects"
+readme = {file = "SKILL.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["jsonschema>=4.21,<5"]
+
+[project.scripts]
+blender-edit-pipeline = "blender_edit_pipeline.pipeline:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

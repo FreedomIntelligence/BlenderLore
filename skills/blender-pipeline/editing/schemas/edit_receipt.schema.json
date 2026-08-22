@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedomintelligence.github.io/3D-Coding-Blender/schemas/blender-edit-receipt-v1.json",
+  "title": "Completed Blender edit receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "edit_id", "kind", "source", "request_sha256", "targets", "changes", "non_target_drift", "reopen", "review", "visual_evidence", "artifacts"],
+  "properties": {
+    "schema": {"const": "blender-edit-receipt/v1"}, "status": {"const": "complete"},
+    "edit_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "kind": {"enum": ["material", "color", "geometry", "modeling", "scene"]},
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["filename", "sha256"],
+      "properties": {"filename": {"type": "string"}, "sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "request_sha256": {"$ref": "#/$defs/digest"},
+    "targets": {"type": "object"}, "changes": {"type": "object"},
+    "non_target_drift": {"type": "array", "maxItems": 0},
+    "reopen": {
+      "type": "object", "additionalProperties": false, "required": ["verified", "snapshot_digest"],
+      "properties": {"verified": {"const": true}, "snapshot_digest": {"$ref": "#/$defs/digest"}}
+    },
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["package_sha256", "assessment_sha256"],
+      "properties": {
+        "package_sha256": {"$ref": "#/$defs/digest"},
+        "assessment_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "visual_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["before", "after", "difference", "assessment"],
+      "properties": {
+        "before": {"$ref": "#/$defs/artifact"},
+        "after": {"$ref": "#/$defs/artifact"},
+        "difference": {"$ref": "#/$defs/difference"},
+        "assessment": {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "name", "before_score", "after_score", "minimum_after_score", "summary", "sha256"],
+          "properties": {
+            "kind": {"enum": ["human", "vlm"]}, "name": {"type": "string", "minLength": 1},
+            "before_score": {"type": "number", "minimum": 0, "maximum": 100},
+            "after_score": {"type": "number", "minimum": 80, "maximum": 100},
+            "minimum_after_score": {"type": "number", "minimum": 80, "maximum": 100},
+            "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "sha256": {"$ref": "#/$defs/digest"}
+          }
+        }
+      }
+    },
+    "artifacts": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/artifact"}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {"enum": ["asset.blend", "before.png", "after.png", "source_map.json", "review_package.json", "assessment.json"]}, "sha256": {"$ref": "#/$defs/digest"},
+        "bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "difference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["width", "height", "changed_fraction", "mean_absolute_delta"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1},
+        "changed_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "mean_absolute_delta": {"type": "number", "minimum": 0, "maximum": 255}
+      }
+    }
+  }
+}

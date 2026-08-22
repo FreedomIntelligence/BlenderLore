@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedomintelligence.github.io/3D-Coding-Blender/schemas/blender-edit-request-v1.json",
+  "title": "Blender edit request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "edit_id", "kind", "source_blend", "source_sha256", "targets", "parameters"],
+  "properties": {
+    "schema": {"const": "blender-edit-request/v1"},
+    "edit_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "kind": {"enum": ["material", "color", "geometry", "modeling", "scene"]},
+    "source_blend": {"type": "string", "minLength": 1},
+    "source_sha256": {"$ref": "#/$defs/digest"},
+    "targets": {"$ref": "#/$defs/targets"},
+    "parameters": {"type": "object", "minProperties": 1},
+    "evidence": {"$ref": "#/$defs/evidence"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"const": "material"}}},
+      "then": {"properties": {
+        "targets": {"required": ["materials"], "propertyNames": {"const": "materials"}},
+        "parameters": {"$ref": "#/$defs/material_parameters"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "color"}}},
+      "then": {"properties": {
+        "targets": {"required": ["materials"], "propertyNames": {"const": "materials"}},
+        "parameters": {"$ref": "#/$defs/color_parameters"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "geometry"}}},
+      "then": {"properties": {
+        "targets": {"required": ["objects"], "propertyNames": {"const": "objects"}},
+        "parameters": {"$ref": "#/$defs/geometry_parameters"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "modeling"}}},
+      "then": {"properties": {
+        "targets": {
+          "propertyNames": {"enum": ["objects", "generated_objects"]},
+          "anyOf": [{"required": ["objects"]}, {"required": ["generated_objects"]}]
+        },
+        "parameters": {"$ref": "#/$defs/modeling_parameters"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "scene"}}},
+      "then": {"properties": {
+        "targets": {"propertyNames": {"enum": ["lights", "camera"]}},
+        "parameters": {"$ref": "#/$defs/scene_parameters"}
+      }}
+    }
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "number": {"type": "number"},
+    "unit_number": {"type": "number", "minimum": 0, "maximum": 1},
+    "vec2": {"type": "array", "items": {"$ref": "#/$defs/number"}, "minItems": 2, "maxItems": 2},
+    "vec3": {"type": "array", "items": {"$ref": "#/$defs/number"}, "minItems": 3, "maxItems": 3},
+    "color3": {"type": "array", "items": {"$ref": "#/$defs/unit_number"}, "minItems": 3, "maxItems": 3},
+    "color": {"type": "array", "items": {"$ref": "#/$defs/unit_number"}, "minItems": 3, "maxItems": 4},
+    "names": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+    "targets": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "objects": {"$ref": "#/$defs/names"}, "materials": {"$ref": "#/$defs/names"},
+        "lights": {"$ref": "#/$defs/names"}, "camera": {"$ref": "#/$defs/names"},
+        "generated_objects": {"$ref": "#/$defs/names"}
+      }
+    },
+    "principled_inputs": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "Base Color": {"$ref": "#/$defs/color"}, "Emission Color": {"$ref": "#/$defs/color"},
+        "Metallic": {"$ref": "#/$defs/unit_number"}, "Roughness": {"$ref": "#/$defs/unit_number"},
+        "IOR": {"type": "number", "minimum": 1, "maximum": 4}, "Alpha": {"$ref": "#/$defs/unit_number"},
+        "Transmission Weight": {"$ref": "#/$defs/unit_number"}, "Coat Weight": {"$ref": "#/$defs/unit_number"},
+        "Coat Roughness": {"$ref": "#/$defs/unit_number"}
+      }
+    },
+    "material_parameters": {
+      "type": "object", "additionalProperties": false, "required": ["materials"],
+      "properties": {"materials": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/principled_inputs"}}}
+    },
+    "hue_adjustment": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "hue": {"type": "number", "minimum": 0, "maximum": 1},
+        "saturation": {"type": "number", "minimum": 0, "maximum": 2},
+        "value": {"type": "number", "minimum": 0, "maximum": 2},
+        "factor": {"$ref": "#/$defs/unit_number"}
+      }
+    },
+    "color_parameters": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["colors"],
+          "properties": {"colors": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/color"}}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["hue_saturation"],
+          "properties": {"hue_saturation": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/hue_adjustment"}}}
+        }
+      ]
+    },
+    "face": {"type": "array", "items": {"type": "integer", "minimum": 0}, "minItems": 3, "uniqueItems": true},
+    "uv_layers": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/vec2"}}
+    },
+    "geometry_inline_replacement": {
+      "type": "object", "additionalProperties": false, "required": ["vertices", "faces"],
+      "properties": {
+        "vertices": {"type": "array", "items": {"$ref": "#/$defs/vec3"}, "minItems": 4},
+        "faces": {"type": "array", "items": {"$ref": "#/$defs/face"}, "minItems": 1},
+        "uv_layers": {"$ref": "#/$defs/uv_layers"}, "fit_to_source_bbox": {"type": "boolean"},
+        "envelope_tolerance": {"type": "number", "minimum": 0, "maximum": 1},
+        "volume_ratio_tolerance": {"type": "number", "minimum": 0, "maximum": 1},
+        "world_center_tolerance": {"type": "number", "minimum": 0, "maximum": 100000}
+      }
+    },
+    "geometry_generation_handoff": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attempt_receipt", "attempt_receipt_sha256", "asset_blend", "asset_blend_sha256", "object"],
+      "properties": {
+        "attempt_receipt": {"type": "string", "minLength": 1},
+        "attempt_receipt_sha256": {"$ref": "#/$defs/digest"},
+        "asset_blend": {"type": "string", "minLength": 1},
+        "asset_blend_sha256": {"$ref": "#/$defs/digest"},
+        "object": {"type": "string", "minLength": 1},
+        "fit_to_source_bbox": {"type": "boolean"},
+        "envelope_tolerance": {"type": "number", "minimum": 0, "maximum": 1},
+        "volume_ratio_tolerance": {"type": "number", "minimum": 0, "maximum": 1},
+        "world_center_tolerance": {"type": "number", "minimum": 0, "maximum": 100000}
+      }
+    },
+    "geometry_parameters": {
+      "type": "object", "additionalProperties": false, "required": ["replacements"],
+      "properties": {
+        "replacements": {
+          "type": "object", "minProperties": 1,
+          "additionalProperties": {
+            "oneOf": [
+              {"$ref": "#/$defs/geometry_inline_replacement"},
+              {"$ref": "#/$defs/geometry_generation_handoff"}
+            ]
+          }
+        }
+      }
+    },
+    "add_primitive": {
+      "type": "object", "additionalProperties": false, "required": ["op", "name", "primitive", "collection"],
+      "properties": {
+        "op": {"const": "add_primitive"}, "name": {"type": "string", "minLength": 1},
+        "primitive": {"enum": ["cube", "uv_sphere", "cylinder", "cone", "torus"]},
+        "collection": {"type": "string", "minLength": 1}, "location": {"$ref": "#/$defs/vec3"},
+        "rotation": {"$ref": "#/$defs/vec3"}, "scale": {"$ref": "#/$defs/vec3"}
+      }
+    },
+    "modifier_settings": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "width": {"type": "number", "minimum": 0, "maximum": 100000},
+        "segments": {"type": "integer", "minimum": 1, "maximum": 64},
+        "thickness": {"type": "number", "minimum": -100000, "maximum": 100000},
+        "offset": {"type": "number", "minimum": -1, "maximum": 1},
+        "levels": {"type": "integer", "minimum": 0, "maximum": 6},
+        "render_levels": {"type": "integer", "minimum": 0, "maximum": 6}
+      }
+    },
+    "add_modifier": {
+      "type": "object", "additionalProperties": false, "required": ["op", "object", "modifier_type"],
+      "properties": {
+        "op": {"const": "add_modifier"}, "object": {"type": "string", "minLength": 1},
+        "modifier_type": {"enum": ["BEVEL", "SOLIDIFY", "SUBSURF"]},
+        "name": {"type": "string", "minLength": 1}, "settings": {"$ref": "#/$defs/modifier_settings"}
+      }
+    },
+    "modeling_parameters": {
+      "type": "object", "additionalProperties": false, "required": ["operations"],
+      "properties": {
+        "operations": {"type": "array", "minItems": 1, "items": {"oneOf": [{"$ref": "#/$defs/add_primitive"}, {"$ref": "#/$defs/add_modifier"}]}}
+      }
+    },
+    "light_edit": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "energy": {"type": "number", "minimum": 0, "maximum": 1000000},
+        "energy_multiplier": {"type": "number", "minimum": 0, "maximum": 100},
+        "color": {"$ref": "#/$defs/color3"}, "shadow_soft_size": {"type": "number", "minimum": 0, "maximum": 1000}
+      },
+      "not": {"required": ["energy", "energy_multiplier"]}
+    },
+    "camera_edit": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "location": {"$ref": "#/$defs/vec3"}, "rotation": {"$ref": "#/$defs/vec3"},
+        "lens": {"type": "number", "minimum": 1, "maximum": 1000}
+      }
+    },
+    "scene_parameters": {
+      "type": "object", "additionalProperties": false, "minProperties": 1,
+      "properties": {
+        "lights": {"type": "object", "additionalProperties": {"$ref": "#/$defs/light_edit"}},
+        "cameras": {"type": "object", "additionalProperties": {"$ref": "#/$defs/camera_edit"}},
+        "allow_world": {"type": "boolean"}, "world_color": {"$ref": "#/$defs/color3"},
+        "allow_exposure": {"type": "boolean"}, "exposure": {"type": "number", "minimum": -32, "maximum": 32}
+      },
+      "allOf": [
+        {"if": {"required": ["allow_world"], "properties": {"allow_world": {"const": true}}}, "then": {"required": ["world_color"]}},
+        {"if": {"required": ["world_color"]}, "then": {"required": ["allow_world"], "properties": {"allow_world": {"const": true}}}},
+        {"if": {"required": ["allow_exposure"], "properties": {"allow_exposure": {"const": true}}}, "then": {"required": ["exposure"]}},
+        {"if": {"required": ["exposure"]}, "then": {"required": ["allow_exposure"], "properties": {"allow_exposure": {"const": true}}}}
+      ]
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "render": {"const": true}, "resolution": {"type": "integer", "minimum": 32, "maximum": 4096},
+        "min_changed_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "min_mean_absolute_delta": {"type": "number", "minimum": 0, "maximum": 255},
+        "minimum_after_score": {"type": "number", "minimum": 80, "maximum": 100}
+      }
+    }
+  }
+}

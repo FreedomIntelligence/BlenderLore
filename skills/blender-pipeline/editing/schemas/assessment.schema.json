@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freedomintelligence.github.io/3D-Coding-Blender/schemas/blender-edit-assessment-v1.json",
+  "title": "External Blender edit visual assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "decision", "review_package_sha256", "bindings", "assessor", "scores", "summary"],
+  "properties": {
+    "schema": {"const": "blender-edit-assessment/v1"},
+    "decision": {"const": "accepted"},
+    "review_package_sha256": {"$ref": "#/$defs/digest"},
+    "bindings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_sha256", "before_sha256", "after_sha256"],
+      "properties": {
+        "candidate_sha256": {"$ref": "#/$defs/digest"},
+        "before_sha256": {"$ref": "#/$defs/digest"},
+        "after_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "assessor": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "name"],
+      "properties": {
+        "kind": {"enum": ["human", "vlm"]},
+        "name": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "scores": {
+      "type": "object", "additionalProperties": false, "required": ["before", "after"],
+      "properties": {
+        "before": {"type": "number", "minimum": 0, "maximum": 100},
+        "after": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

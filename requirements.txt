@@ -1,21 +1,5 @@
-beautifulsoup4
-certifi
-lxml
-numpy
-opencv-python
-openai
-pandas
-paddleocr
-pexpect; platform_system != "Windows"
-Pillow
-python-dotenv
-qdrant-client
-requests
-sentence-transformers
-tqdm
-youtube-transcript-api
-yt-dlp
+# Full Python environment for the maintained Blender pipeline skill.
+-r skills/blender-pipeline/generation/requirements-knowledge.txt
+skills/blender-pipeline/editing
 
-# Platform-specific ASR backends. WSL2 reports Linux and uses CUDA/faster-whisper.
-faster-whisper; platform_system != "Darwin"
-mlx-whisper; platform_system == "Darwin"
+# Blender, FFmpeg, and optional Tesseract OCR are system applications.

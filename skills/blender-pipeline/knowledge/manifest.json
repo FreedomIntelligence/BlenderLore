@@ -1,0 +1,47 @@
+{
+  "$schema": "manifest.schema.json",
+  "schema_version": "blender-pipeline.knowledge-manifest.v1",
+  "updated_through": "2026-08-22",
+  "recent_extraction_window": {
+    "from": "2026-08-07",
+    "through": "2026-08-22"
+  },
+  "documents": [
+    {
+      "path": "index.md",
+      "scope": "router",
+      "title": "Knowledge index",
+      "keywords": ["routing", "retrieval", "scope"]
+    },
+    {
+      "path": "evidence-and-routing.md",
+      "scope": "shared",
+      "title": "Evidence and route selection",
+      "keywords": ["tutorial", "OCR", "reference", "static", "dynamic"]
+    },
+    {
+      "path": "generation.md",
+      "scope": "generation",
+      "title": "From-zero generation",
+      "keywords": ["generation", "stage gates", "operation fidelity", "anti-collapse"]
+    },
+    {
+      "path": "editing.md",
+      "scope": "editing",
+      "title": "Existing-asset editing",
+      "keywords": ["editing", "replacement", "non-regression", "material graph"]
+    },
+    {
+      "path": "rendering-and-dynamics.md",
+      "scope": "shared",
+      "title": "Rendering, visual QA, and dynamics",
+      "keywords": ["rendering", "motion", "camera", "exposure", "simulation"]
+    },
+    {
+      "path": "operations-and-knowledge.md",
+      "scope": "shared",
+      "title": "Operations and knowledge lifecycle",
+      "keywords": ["idempotency", "infrastructure", "knowledge promotion", "publication"]
+    }
+  ]
+}

@@ -16,7 +16,18 @@ from urllib.parse import unquote, urlsplit
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
-TEXT_SUFFIXES = {".json", ".md", ".py", ".sh", ".toml", ".txt", ".yaml", ".yml"}
+TEXT_SUFFIXES = {
+    ".csv",
+    ".html",
+    ".json",
+    ".md",
+    ".py",
+    ".sh",
+    ".toml",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
 IGNORED_DIRS = {
     ".git",
     ".mypy_cache",
@@ -26,16 +37,37 @@ IGNORED_DIRS = {
     "__pycache__",
 }
 FORBIDDEN_ARTIFACT_SUFFIXES = {
+    ".7z",
+    ".avi",
     ".blend",
     ".blend1",
+    ".bz2",
     ".db",
+    ".fbx",
+    ".gif",
     ".glb",
     ".gltf",
     ".gz",
+    ".jpeg",
+    ".jpg",
     ".log",
+    ".m4v",
+    ".mkv",
     ".mov",
     ".mp4",
+    ".obj",
+    ".png",
+    ".rar",
     ".sqlite",
+    ".stl",
+    ".tar",
+    ".tgz",
+    ".usda",
+    ".usdc",
+    ".usd",
+    ".webm",
+    ".webp",
+    ".xz",
     ".zip",
 }
 REQUIRED_FILES = {
@@ -50,6 +82,7 @@ REQUIRED_FILES = {
     Path("editing/schemas/review_package.schema.json"),
     Path("editing/schemas/source_map.schema.json"),
     Path("editing/schemas/edit_receipt.schema.json"),
+    Path("generation/scripts/render_illustrated_tutorial.py"),
     Path("knowledge/index.md"),
     Path("knowledge/manifest.json"),
     Path("knowledge/manifest.schema.json"),
@@ -59,12 +92,22 @@ REQUIRED_FILES = {
     Path("knowledge/rendering-and-dynamics.md"),
     Path("knowledge/operations-and-knowledge.md"),
     Path("scripts/validate_package.py"),
+    Path("reproduction/SKILL.md"),
+    Path("reproduction/references/execution-contract.md"),
+    Path("reproduction/scripts/export_public_showcase_knowledge.py"),
+    Path("reproduction/scripts/launch_video2blender_reproduction.py"),
+    Path("reproduction/scripts/reproduce.sh"),
+    Path("reproduction/scripts/validate_public_knowledge.py"),
+    Path("reproduction/knowledge/manifest.json"),
+    Path("reproduction/knowledge/public_media_attestations.json"),
+    Path("reproduction/knowledge/public_showcase_inventory.json"),
 }
 REQUIRED_DIRS = {
     Path("generation/scripts"),
     Path("generation/tests"),
     Path("editing/src/blender_edit_pipeline"),
     Path("editing/tests"),
+    Path("reproduction/tests"),
     Path("tests"),
 }
 LOCAL_IMPORT_PREFIXES = (
@@ -156,6 +199,7 @@ def check_completeness(root: Path) -> list[Issue]:
         root / "SKILL.md",
         root / "generation/SKILL.md",
         root / "editing/SKILL.md",
+        root / "reproduction/SKILL.md",
     ):
         if not skill_path.is_file():
             continue
@@ -240,6 +284,9 @@ def _sensitive_patterns() -> Sequence[tuple[str, re.Pattern[str]]]:
             "private key",
             re.compile(r"-----BEGIN (?:OPENSSH|RSA|EC|DSA) PRIVATE KEY-----"),
         ),
+        ("private WeChat path", re.compile(r"xwechat_files", re.IGNORECASE)),
+        ("embedded file URL", re.compile(r"file://", re.IGNORECASE)),
+        ("embedded data URI", re.compile(r"data:(?:image|video)/", re.IGNORECASE)),
         ("credential in URL", re.compile(r"https?://[^/\s:@]+:[^/\s@]+@")),
     )
 
@@ -260,6 +307,8 @@ def check_sensitive_paths(root: Path) -> list[Issue]:
             )
             continue
         for label, pattern in _sensitive_patterns():
+            if label == "embedded data URI" and path.suffix.lower() in {".py", ".sh"}:
+                continue
             for match in pattern.finditer(text):
                 line = text.count("\n", 0, match.start()) + 1
                 issues.append(

@@ -1,11 +1,21 @@
 ---
 name: blender-pipeline
-description: Route Blender work between from-zero generation and scoped editing of existing assets, with shared quality gates and maintained knowledge references.
+description: Route Blender work among maintained-showcase reproduction, from-zero generation, and scoped editing of existing assets, with shared quality gates and maintained knowledge references.
 ---
 
 # Blender Pipeline Router
 
 Select exactly one primary mode before loading implementation detail.
+
+## Reproduce a maintained showcase
+
+Use reproduction when the user names a cataloged showcase and supplies video,
+tutorial, image, or authorized source-asset inputs. This hybrid route first
+enforces recipe, visual-acceptance, and distribution gates, then delegates the
+actual scene work to generation or editing.
+
+Read [reproduction/SKILL.md](reproduction/SKILL.md). Do not treat a public
+preview or catalog entry as asset-download authorization.
 
 ## Generate from zero
 

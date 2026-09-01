@@ -77,6 +77,13 @@ jobs:
             -p "test_*.py" \
             -v
 
+      - name: Test showcase reproduction contracts
+        run: |
+          python -m unittest discover \
+            -s skills/blender-pipeline/reproduction/tests \
+            -p "test_*.py" \
+            -v
+
       - name: Test existing-asset editing pipeline
         env:
           PYTHONPATH: skills/blender-pipeline/editing/src

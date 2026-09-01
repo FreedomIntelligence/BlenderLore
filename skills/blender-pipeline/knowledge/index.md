@@ -7,6 +7,7 @@ incident.
 
 | Need | Load | Useful search terms |
 | --- | --- | --- |
+| Reproduce a named public showcase under its authorization contract | [Public showcase catalog](../reproduction/knowledge/manifest.json) and [reproduction contract](../reproduction/references/execution-contract.md) | recipe, distribution, visual acceptance, public snapshot |
 | Decide whether work is generation or editing | [Evidence and route selection](evidence-and-routing.md) | source authority, final reference, static, dynamic |
 | Reconstruct an asset from video or tutorial evidence | [From-zero generation](generation.md) | Q-Gate, stage isolation, operation fidelity, anti-collapse |
 | Modify an existing project or replace selected content | [Existing-asset editing](editing.md) | mutation scope, envelope, material graph, before/after |

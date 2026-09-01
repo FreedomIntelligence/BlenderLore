@@ -43,6 +43,10 @@ new integrations must use the `BLENDER_PIPELINE_*` prefix.
 2. Run `prepare_rich_tutorial_evidence.py`,
    `generate_rich_tutorial_chunks.py`, `merge_rich_tutorial_chunks.py`, and
    `build_pipeline_specs.py` as needed to create bounded evidence and specs.
+   `tutorial.md` and `steps_verified.json` are the operational tutorial
+   contract. Add `--render-tutorial-html` only when a separate human-readable
+   HTML view is useful; it is derived from the same verified steps and never
+   replaces the operational files.
 3. Run `run_video_replay_main.py --video-dir <dir>`. The orchestrator invokes
    the strict replay, version registry, render evidence, and candidate
    knowledge update stages.

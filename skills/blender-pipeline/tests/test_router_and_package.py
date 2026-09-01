@@ -15,7 +15,7 @@ import validate_package as validator
 
 
 class RouterContractTests(unittest.TestCase):
-    def test_router_is_concise_and_resolves_both_modes(self) -> None:
+    def test_router_is_concise_and_resolves_all_routes(self) -> None:
         path = PACKAGE_ROOT / "SKILL.md"
         text = path.read_text(encoding="utf-8")
         metadata = validator.frontmatter(text)
@@ -23,6 +23,7 @@ class RouterContractTests(unittest.TestCase):
         self.assertLessEqual(len(text.splitlines()), 80)
         self.assertTrue((PACKAGE_ROOT / "generation/SKILL.md").is_file())
         self.assertTrue((PACKAGE_ROOT / "editing/SKILL.md").is_file())
+        self.assertTrue((PACKAGE_ROOT / "reproduction/SKILL.md").is_file())
         self.assertFalse(validator.check_links(PACKAGE_ROOT))
 
     def test_package_contract_is_self_consistent(self) -> None:

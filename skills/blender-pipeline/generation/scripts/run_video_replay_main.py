@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -1165,6 +1166,17 @@ def generate_code_tutorial(video_dir: Path, out_dir: Path | None) -> None:
     run(cmd)
 
 
+def render_illustrated_tutorial(video_dir: Path) -> None:
+    run(
+        [
+            sys.executable,
+            str(SCRIPTS / "render_illustrated_tutorial.py"),
+            "--video-dir",
+            str(video_dir),
+        ]
+    )
+
+
 def update_knowledge(video_dir: Path) -> None:
     run(
         [
@@ -1174,6 +1186,36 @@ def update_knowledge(video_dir: Path) -> None:
             str(video_dir),
         ]
     )
+
+
+def validate_forced_tutorial_runtime(args: argparse.Namespace) -> None:
+    """Fail before workspace writes when paid tutorial extraction is unsafe."""
+
+    if not args.force_tutorial:
+        return
+    if args.max_windows < 1:
+        raise RuntimeError("--force-tutorial requires a positive --max-windows")
+    parsed = urllib.parse.urlparse(DEFAULT_ENDPOINT)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+    ):
+        raise RuntimeError(
+            "forced tutorial extraction requires a credential-free HTTPS "
+            "BLENDER_PIPELINE_API_ENDPOINT"
+        )
+    if DEFAULT_MODEL not in {"gpt-5.6-sol", "gpt-5.5"}:
+        raise RuntimeError(
+            "forced tutorial extraction requires gpt-5.6-sol, with gpt-5.5 "
+            "allowed only as the explicit fallback"
+        )
+    if not DEFAULT_SECRET.is_file() or DEFAULT_SECRET.stat().st_mode & 0o077:
+        raise RuntimeError(
+            "forced tutorial extraction requires BLENDER_PIPELINE_API_KEY_FILE "
+            "to point to an owner-only regular file"
+        )
 
 
 def main() -> int:
@@ -1202,7 +1244,16 @@ def main() -> int:
         choices=["off", "auto", "always"],
         default=os.environ.get("BLENDER_PIPELINE_WORKFLOW_EVIDENCE", "auto"),
     )
+    parser.add_argument(
+        "--render-tutorial-html",
+        action="store_true",
+        help=(
+            "Optionally render a human-facing HTML view; tutorial.md remains "
+            "the operational source of truth."
+        ),
+    )
     args = parser.parse_args()
+    validate_forced_tutorial_runtime(args)
 
     video_dir = args.video_dir
     if not video_dir.exists():
@@ -1247,6 +1298,8 @@ def main() -> int:
     )
     try:
         ensure_tutorial(video_dir, args)
+        if args.render_tutorial_html:
+            render_illustrated_tutorial(video_dir)
         extract_workflow_evidence(video_dir, args.workflow_evidence)
         if not args.skip_knowledge:
             retrieve_pre_spec_knowledge(video_dir)

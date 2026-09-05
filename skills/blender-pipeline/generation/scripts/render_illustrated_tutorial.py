@@ -9,6 +9,7 @@ import hashlib
 import html
 import json
 import mimetypes
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -100,6 +101,26 @@ def render(video_dir: Path, output: Path | None = None) -> dict[str, Any]:
     root = video_dir.expanduser().resolve(strict=True)
     if not root.is_dir():
         raise TutorialRenderError("--video-dir must be a directory")
+    manifest_path = root / "tutorial_manifest.json"
+    manifest = _read_object(manifest_path) if manifest_path.is_file() else {}
+    if manifest.get("schema") == "video2blender-visual-tutorial.v1":
+        scripts = Path(__file__).resolve().parents[2] / "tutorial-extraction" / "scripts"
+        sys.path.insert(0, str(scripts))
+        try:
+            from visual_tutorial_pipeline import render_html, validate_workspace
+            issues = validate_workspace(root)
+            if issues:
+                raise TutorialRenderError("; ".join(issues))
+            target = output or root / "illustrated_tutorial.html"
+            if not target.is_absolute():
+                target = root / target
+            if not target.resolve().is_relative_to(root):
+                raise TutorialRenderError("HTML output must stay inside --video-dir")
+            render_html(root / manifest["package"] / manifest["files"]["tutorial"], target)
+            return {"schema": "video2blender-illustrated-tutorial-receipt.v1",
+                    "html": str(target.relative_to(root)), "step_count": manifest["counts"]["steps"]}
+        finally:
+            sys.path.pop(0)
     steps_path = root / "steps_verified.json"
     if not steps_path.is_file():
         steps_path = root / "steps_rich.json"

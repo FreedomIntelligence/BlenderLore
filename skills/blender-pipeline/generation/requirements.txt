@@ -1,5 +1,6 @@
 # Runtime dependencies outside Blender's bundled Python.
 Pillow>=10.4,<13
 requests>=2.32,<3
+Markdown>=3.6,<4  # Optional HTML view of the visual tutorial.
 
 # Blender provides bpy, bpy_extras, and mathutils. Do not install them with pip.

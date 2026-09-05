@@ -22,14 +22,17 @@ accepted must fail before download, model invocation, or Blender execution.
   `steps_verified.json`.
 - To extract an operational tutorial from video, explicitly use
   `--tutorial-mode extract`, `--video-url`, at least one `--image`, and a
-  positive `--tutorial-window-budget`. Extraction uses the generation
-  pipeline's rich evidence route and defaults to `gpt-5.6-sol`; `gpt-5.5` is
-  an explicit fallback only.
+  positive `--tutorial-window-budget`. Extraction delegates to the sibling
+  [tutorial extraction skill](../tutorial-extraction/SKILL.md), defaults to the
+  balanced profile and `gpt-5.6-sol`. The supplied `video-to-visual-tutorial`
+  skill produces a complete procedure; a compatibility adapter supplies the
+  existing replay files. `gpt-5.5` is an explicit whole-run fallback only and
+  requires `--tutorial-fallback-reason`.
 - Paid extraction requires `BLENDER_PIPELINE_API_ENDPOINT` and an owner-only
   secret file named by `BLENDER_PIPELINE_API_KEY_FILE`. Dry runs do not read
   credentials, download media, call a model, or write a run directory.
 - Add `--render-tutorial-html` only when a human-facing display copy is useful.
-  It is rendered from the same verified steps without a second model call and
+  It is rendered from the same complete Markdown without a second model call and
   never replaces `tutorial.md`.
 
 ## Asset delivery

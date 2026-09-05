@@ -7,6 +7,13 @@ description: Route Blender work among maintained-showcase reproduction, from-zer
 
 Select exactly one primary mode before loading implementation detail.
 
+## Extract a tutorial from video
+
+Use tutorial extraction when the immediate deliverable is a complete illustrated
+Markdown tutorial, learner inputs, and a separate 100-point JSON rubric. Read
+[tutorial-extraction/SKILL.md](tutorial-extraction/SKILL.md). Generation and
+reproduction delegate their video-understanding stage to this same entrypoint.
+
 ## Reproduce a maintained showcase
 
 Use reproduction when the user names a cataloged showcase and supplies video,

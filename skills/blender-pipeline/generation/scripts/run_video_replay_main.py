@@ -21,6 +21,12 @@ from video_replay_delivery_contract import complete_six_view_delivery
 
 PROJECT = PROJECT_ROOT
 SCRIPTS = SCRIPT_ROOT
+TUTORIAL_EXTRACTOR = (
+    SCRIPTS.parents[1]
+    / "tutorial-extraction"
+    / "scripts"
+    / "extract_video_tutorial.py"
+)
 DEFAULT_SECRET = Path(
     os.environ.get("BLENDER_PIPELINE_API_KEY_FILE", str(SECRET_ROOT / "model_api_key"))
 )
@@ -310,6 +316,26 @@ IMAGE_RE = re.compile(r"!\[[^\]]*\]\(([^)\n]+)\)")
 
 
 def tutorial_visual_text_status(video_dir: Path) -> dict:
+    manifest = load_json(video_dir / "tutorial_manifest.json")
+    if manifest.get("schema") == "video2blender-visual-tutorial.v1":
+        # The visual skill validates complete learner prose and relative images;
+        # legacy harness headings are not part of that document format.
+        import importlib.util
+        module_path = TUTORIAL_EXTRACTOR.parent / "visual_tutorial_pipeline.py"
+        spec = importlib.util.spec_from_file_location("visual_tutorial_pipeline", module_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(module_path.parent))
+        try:
+            spec.loader.exec_module(module)
+            issues = module.validate_workspace(video_dir)
+        finally:
+            sys.path.pop(0)
+        review = {"status": "needs_fix" if issues else "pass", "format": manifest["schema"],
+                  "issues": issues, "step_count": manifest.get("counts", {}).get("steps", 0),
+                  "required": REQUIRE_VISUAL_TEXT_CONTRACT}
+        (video_dir / "tutorial_visual_text_review.json").write_text(
+            json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
+        return review
     tutorial_path = video_dir / "tutorial_path_refs.md"
     if not tutorial_path.exists():
         tutorial_path = video_dir / "tutorial.md"
@@ -464,74 +490,63 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
         target = video_dir / "target_reference.png"
         if not target.exists():
             target = video_dir / "final_reference.png"
-        if not source.exists() or not target.exists():
+        if not source.exists():
             raise FileNotFoundError(
-                "force tutorial needs source.mp4/source_video_path and final_reference.png"
+                "force tutorial needs source.mp4 or source_video_path"
             )
-        run(
-            [
-                sys.executable,
-                str(SCRIPTS / "prepare_rich_tutorial_evidence.py"),
-                "--video-dir",
-                str(video_dir),
-                "--source",
-                str(source),
-                "--bvid",
-                str(info.get("bvid") or info.get("id") or video_dir.name),
-                "--title",
-                str(info.get("title") or video_dir.name),
-                "--url",
-                str(info.get("webpage_url") or info.get("original_url") or ""),
-                "--target-reference",
-                str(target),
-                "--max-windows",
-                str(args.max_windows),
-            ]
-        )
-        # The first pass is only needed to validate the auxiliary reference
-        # before tutorial generation. Defer the costly version OCR until the
-        # merged tutorial exists, where it runs once with better evidence.
-        build_pipeline_specs(video_dir, skip_version_ocr=True)
-        windows_path = video_dir / "rich_evidence/windows.json"
-        windows = json.loads(windows_path.read_text(encoding="utf-8"))
-        original_window_count = len(windows)
-        windows = select_windows(windows, args.max_windows)
-        if len(windows) != original_window_count:
-            full_windows_path = video_dir / "rich_evidence/windows_full.json"
-            if not full_windows_path.exists():
-                shutil.copy2(windows_path, full_windows_path)
-            windows_path.write_text(
-                json.dumps(windows, ensure_ascii=False, indent=2), encoding="utf-8"
+        if not TUTORIAL_EXTRACTOR.is_file():
+            raise FileNotFoundError(
+                f"canonical tutorial extractor is missing: {TUTORIAL_EXTRACTOR}"
             )
-            (video_dir / "tutorial_window_budget.json").write_text(
-                json.dumps(
-                    {
-                        "original_windows": original_window_count,
-                        "selected_windows": len(windows),
-                        "max_windows": args.max_windows,
-                        "strategy": "even_coverage",
-                    },
-                    ensure_ascii=False,
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-        chunks_dir = video_dir / "rich_tutorial_chunks"
-        if chunks_dir.exists():
-            safe_rmtree(chunks_dir)
-        generate_tutorial_chunks_bounded(
-            video_dir,
-            window_count=len(windows),
-            chunk_size=max(1, args.chunk_count),
+        command = [
+            sys.executable,
+            str(TUTORIAL_EXTRACTOR),
+            "--video-file",
+            str(source),
+            "--title",
+            str(info.get("title") or video_dir.name),
+            "--output-dir",
+            str(video_dir),
+            "--profile",
+            args.tutorial_profile,
+            "--model",
+            args.tutorial_model,
+            "--source-url",
+            str(info.get("webpage_url") or info.get("original_url") or ""),
+            "--window-budget",
+            str(args.max_windows),
+            "--workspace-mode",
+            "--replace-existing",
+        ]
+        transcript_candidates = [
+            video_dir / "segments.jsonl",
+            video_dir / "transcript" / "segments.jsonl",
+            video_dir / "transcripts" / "segments.jsonl",
+        ]
+        bvid = str(info.get("bvid") or info.get("id") or "").strip()
+        for raw_root in os.environ.get("BLENDER_TRANSCRIPT_ROOTS", "").split(os.pathsep):
+            if raw_root.strip() and bvid:
+                root = Path(raw_root).expanduser()
+                transcript_candidates.extend(
+                    [
+                        root / bvid / "segments.jsonl",
+                        root / "Bilibili" / bvid / "segments.jsonl",
+                        root / "YouTube" / bvid / "segments.jsonl",
+                    ]
+                )
+        transcript_path = next(
+            (path for path in transcript_candidates if path.is_file()), None
         )
-        run(
-            [
-                sys.executable,
-                str(SCRIPTS / "merge_rich_tutorial_chunks.py"),
-                "--video-dir",
-                str(video_dir),
-            ]
-        )
+        if transcript_path is not None:
+            command.extend(["--transcript", str(transcript_path)])
+        learner_assets = [*info.get("tutorial_input_assets", []), *getattr(args, "tutorial_input_asset", [])]
+        for asset in dict.fromkeys(map(str, learner_assets)):
+            command.extend(["--input-asset", str(asset)])
+        if getattr(args, "tutorial_fallback_reason", ""):
+            command.extend(["--fallback-reason", args.tutorial_fallback_reason])
+        if args.render_tutorial_html:
+            command.append("--render-html")
+        run(command)
 
     legacy_rich = video_dir / "tutorial_rich.md"
     if legacy_rich.exists() and not path_refs.exists():
@@ -543,25 +558,32 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
         raise FileNotFoundError(f"missing tutorial source in {video_dir}")
     if source_md != path_refs:
         shutil.copy2(source_md, path_refs)
-    run(
-        [
-            sys.executable,
-            str(SCRIPTS / "embed_markdown_images.py"),
-            "--video-dir",
-            str(video_dir),
-            "--source-name",
-            "tutorial_path_refs.md",
-            "--dest-name",
-            "tutorial.md",
-            "--fallback-name",
-            "tutorial_path_refs.md",
-            "--max-side",
-            str(args.embed_max_side),
-        ]
-    )
+    canonical_manifest = load_json(video_dir / "tutorial_manifest.json")
+    if canonical_manifest.get("schema") not in {"video2blender-tutorial-manifest.v2", "video2blender-visual-tutorial.v1"}:
+        run(
+            [
+                sys.executable,
+                str(SCRIPTS / "embed_markdown_images.py"),
+                "--video-dir",
+                str(video_dir),
+                "--source-name",
+                "tutorial_path_refs.md",
+                "--dest-name",
+                "tutorial.md",
+                "--fallback-name",
+                "tutorial_path_refs.md",
+                "--max-side",
+                str(args.embed_max_side),
+            ]
+        )
     steps_rich = video_dir / "steps_rich.json"
     steps_verified = video_dir / "steps_verified.json"
-    if steps_rich.exists():
+    if steps_rich.exists() and (
+        not steps_verified.exists()
+        or canonical_manifest.get("schema") not in {
+            "video2blender-tutorial-manifest.v2", "video2blender-visual-tutorial.v1"
+        }
+    ):
         shutil.copy2(steps_rich, steps_verified)
 
 
@@ -1206,10 +1228,14 @@ def validate_forced_tutorial_runtime(args: argparse.Namespace) -> None:
             "forced tutorial extraction requires a credential-free HTTPS "
             "BLENDER_PIPELINE_API_ENDPOINT"
         )
-    if DEFAULT_MODEL not in {"gpt-5.6-sol", "gpt-5.5"}:
+    if args.tutorial_model not in {"gpt-5.6-sol", "gpt-5.5"}:
         raise RuntimeError(
             "forced tutorial extraction requires gpt-5.6-sol, with gpt-5.5 "
             "allowed only as the explicit fallback"
+        )
+    if (args.tutorial_model == "gpt-5.5") != bool(getattr(args, "tutorial_fallback_reason", "").strip()):
+        raise RuntimeError(
+            "gpt-5.5 extraction requires --tutorial-fallback-reason; omit it for gpt-5.6-sol"
         )
     if not DEFAULT_SECRET.is_file() or DEFAULT_SECRET.stat().st_mode & 0o077:
         raise RuntimeError(
@@ -1223,6 +1249,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--video-dir", type=Path, required=True)
     parser.add_argument("--force-tutorial", action="store_true")
+    parser.add_argument("--tutorial-input-asset", type=Path, action="append", default=[])
+    parser.add_argument("--tutorial-fallback-reason", default="")
+    parser.add_argument(
+        "--tutorial-profile",
+        choices=("economy", "balanced", "forensic"),
+        default="balanced",
+    )
+    parser.add_argument(
+        "--tutorial-model",
+        choices=("gpt-5.6-sol", "gpt-5.5"),
+        default="gpt-5.6-sol",
+    )
     parser.add_argument("--chunk-count", type=int, default=2)
     parser.add_argument("--embed-max-side", type=int, default=1600)
     parser.add_argument("--out-name", default="main_replay_v1")
@@ -1298,7 +1336,7 @@ def main() -> int:
     )
     try:
         ensure_tutorial(video_dir, args)
-        if args.render_tutorial_html:
+        if args.render_tutorial_html and not args.force_tutorial:
             render_illustrated_tutorial(video_dir)
         extract_workflow_evidence(video_dir, args.workflow_evidence)
         if not args.skip_knowledge:

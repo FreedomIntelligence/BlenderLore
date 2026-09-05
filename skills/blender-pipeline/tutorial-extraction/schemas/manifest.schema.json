@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3d-coding-blender.github.io/schemas/tutorial-manifest-v2.json",
+  "title": "Video2Blender tutorial extraction manifest",
+  "type": "object",
+  "required": ["schema", "status", "created_at", "title", "profile", "model", "provider", "fallback_reason", "source", "transcript", "model_usage", "counts", "outputs", "warnings", "raw_model_responses_persisted", "source_video_persisted"],
+  "properties": {
+    "schema": {"const": "video2blender-tutorial-manifest.v2"},
+    "status": {"enum": ["complete", "complete_with_warnings"]},
+    "title": {"type": "string", "minLength": 1},
+    "profile": {"enum": ["economy", "balanced", "forensic"]},
+    "model": {"enum": ["gpt-5.6-sol", "gpt-5.5"]},
+    "provider": {"enum": ["api", "codex-cli"]},
+    "fallback_reason": {"type": "string", "maxLength": 500},
+    "created_at": {"type": "string", "format": "date-time"},
+    "source": {
+      "type": "object",
+      "required": ["kind", "sha256", "duration_seconds"],
+      "properties": {
+        "kind": {"enum": ["local_file", "downloaded_temporary"]},
+        "url": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "duration_seconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "transcript": {"type": "object"},
+    "model_usage": {
+      "type": "object",
+      "required": ["calls", "reported_calls", "response_model", "finish_reason", "call_budget"],
+      "properties": {
+        "calls": {"type": "integer", "minimum": 1},
+        "reported_calls": {"type": "integer", "minimum": 1},
+        "response_model": {"type": "string", "minLength": 1},
+        "finish_reason": {"const": "stop"},
+        "call_budget": {"type": "integer", "minimum": 1}
+      }
+    },
+    "counts": {"type": "object"},
+    "outputs": {"type": "object"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "raw_model_responses_persisted": {"const": false},
+    "source_video_persisted": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"model": {"const": "gpt-5.5"}}},
+      "then": {"properties": {"fallback_reason": {"minLength": 1}}}
+    },
+    {
+      "if": {"properties": {"model": {"const": "gpt-5.6-sol"}}},
+      "then": {"properties": {"fallback_reason": {"maxLength": 0}}}
+    }
+  ]
+}

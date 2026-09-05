@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3d-coding-blender.github.io/schemas/tutorial-steps-v2.json",
+  "title": "Video2Blender verified tutorial steps",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "steps"],
+  "properties": {
+    "schema": {"const": "video2blender-tutorial-steps.v2"},
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "window_index", "time_range", "start_sec", "end_sec", "action", "object", "parameters", "relation_type", "visual_result", "material_color", "spatial_relation", "surface_detail", "implementation_notes", "evidence_ids", "claims"],
+        "properties": {
+          "step_id": {"type": "string", "pattern": "^STEP-[0-9]{3,}$"},
+          "window_index": {"type": "integer", "minimum": 0},
+          "time_range": {"type": "string", "minLength": 1},
+          "start_sec": {"type": "number", "minimum": 0},
+          "end_sec": {"type": "number", "minimum": 0},
+          "action": {"type": "string", "minLength": 1},
+          "object": {"type": "string"},
+          "parameters": {"type": "object"},
+          "relation_type": {"enum": ["none", "node_connection", "parenting", "rigging", "constraint", "spatial_relation"]},
+          "visual_result": {"type": "string"},
+          "material_color": {"type": "string"},
+          "spatial_relation": {"type": "string"},
+          "surface_detail": {"type": "string"},
+          "implementation_notes": {"type": "string"},
+          "evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "claims": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "field", "parameter", "value", "text", "evidence_ids"],
+              "properties": {
+                "kind": {"enum": ["action", "object", "parameter", "connection", "visual_result", "material_color", "surface_detail", "implementation_note"]},
+                "field": {"type": "string", "minLength": 1},
+                "parameter": {"type": "string"},
+                "value": {},
+                "text": {"type": "string", "minLength": 1},
+                "evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

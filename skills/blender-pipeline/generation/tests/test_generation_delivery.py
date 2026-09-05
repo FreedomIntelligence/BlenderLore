@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from PIL import Image
@@ -52,6 +53,67 @@ class _TrajectoryStub:
 
 
 class GenerationDeliveryTests(unittest.TestCase):
+    def test_force_tutorial_routes_only_through_canonical_sibling_skill(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            video_dir = Path(directory)
+            (video_dir / "source.mp4").write_bytes(b"fixture")
+            write_test_png(video_dir / "final_reference.png")
+            (video_dir / "source.info.json").write_text(
+                json.dumps(
+                    {
+                        "title": "Canonical route",
+                        "webpage_url": "https://www.bilibili.com/video/BV18xqdBYEEv/",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            captured: list[list[str]] = []
+
+            def run(command, **_kwargs):
+                captured.append(list(command))
+                (video_dir / "tutorial.md").write_text(
+                    "# verified\n", encoding="utf-8"
+                )
+                (video_dir / "tutorial_path_refs.md").write_text(
+                    "# verified\n", encoding="utf-8"
+                )
+                (video_dir / "tutorial_manifest.json").write_text(
+                    json.dumps(
+                        {"schema": "video2blender-tutorial-manifest.v2"}
+                    ),
+                    encoding="utf-8",
+                )
+                (video_dir / "steps_verified.json").write_text(
+                    '{"steps":[{"step_id":"STEP-001"}]}', encoding="utf-8"
+                )
+                (video_dir / "steps_rich.json").write_text(
+                    '{"steps":[{"step_id":"LEGACY"}]}', encoding="utf-8"
+                )
+
+            args = SimpleNamespace(
+                force_tutorial=True,
+                max_windows=4,
+                tutorial_profile="balanced",
+                tutorial_model="gpt-5.6-sol",
+                render_tutorial_html=False,
+                embed_max_side=1600,
+            )
+            with patch.object(replay_main, "run", side_effect=run):
+                replay_main.ensure_tutorial(video_dir, args)
+            self.assertEqual(1, len(captured))
+            self.assertEqual(
+                replay_main.TUTORIAL_EXTRACTOR, Path(captured[0][1])
+            )
+            self.assertIn("--profile", captured[0])
+            self.assertIn("--model", captured[0])
+            self.assertIn("--workspace-mode", captured[0])
+            self.assertEqual(
+                {"steps": [{"step_id": "STEP-001"}]},
+                json.loads(
+                    (video_dir / "steps_verified.json").read_text(encoding="utf-8")
+                ),
+            )
+
     def test_visual_review_cannot_be_disabled_for_a_completed_delivery(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             video_dir = Path(directory)

@@ -1,0 +1,4 @@
+Pillow>=10.4,<13
+jsonschema>=4.23,<5
+requests>=2.32,<3
+Markdown>=3.6,<4

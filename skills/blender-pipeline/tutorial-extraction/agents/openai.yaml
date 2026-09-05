@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频转图文教程"
+  short_description: "从视频生成 Markdown 教程、配图和内嵌验证器的 JSON Rubric"
+  default_prompt: "使用 $video-to-visual-tutorial 把这个教程视频整理为 input 目录、Markdown 教程、image 配图目录和 100 分 JSON Rubric。"

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -903,9 +904,22 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
         "asset": asset,
     }
     tutorial_mode = str(args.tutorial_mode)
+    learner_assets = []
+    for raw in getattr(args, "tutorial_input_asset", []):
+        path = Path(raw).expanduser().resolve()
+        if not path.exists() or not (path.is_file() or path.is_dir()):
+            raise LaunchError(f"tutorial learner input is unavailable: {path}")
+        if path.suffix.lower() in {".mp4", ".mkv", ".webm", ".mov"}:
+            raise LaunchError("source videos are not learner input assets")
+        learner_assets.append(str(path))
+    if learner_assets and tutorial_mode != "extract":
+        raise LaunchError("--tutorial-input-asset requires --tutorial-mode extract")
     if tutorials and tutorial_mode != "provided":
         raise LaunchError("--tutorial inputs require --tutorial-mode provided")
     if tutorial_mode == "extract":
+        reason = str(args.tutorial_fallback_reason).strip()
+        if (args.tutorial_model == "gpt-5.5") != bool(reason):
+            raise LaunchError("gpt-5.5 extraction requires --tutorial-fallback-reason; omit it for gpt-5.6-sol")
         if not replay_enabled:
             raise LaunchError(
                 "tutorial extraction is only valid for a video-replay recipe"
@@ -980,6 +994,9 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
         "tutorial_extraction": {
             "mode": tutorial_mode,
             "model": args.tutorial_model if tutorial_mode == "extract" else None,
+            "profile": args.tutorial_profile if tutorial_mode == "extract" else None,
+            "fallback_reason": args.tutorial_fallback_reason if tutorial_mode == "extract" else "",
+            "input_assets": list(dict.fromkeys(learner_assets)),
             "window_budget": (
                 args.tutorial_window_budget if tutorial_mode == "extract" else None
             ),
@@ -1121,6 +1138,7 @@ def _stage(plan: dict[str, Any]) -> Path:
         "source_kind": "video_replay_type2" if linked_source else "video_replay",
         "workload_kind": "video_replay_type2" if linked_source else "video_replay",
         "linked_source": linked_source,
+        "tutorial_input_assets": [str(asset["value"])] if asset else [],
         "reproduction_knowledge_manifest": str(manifest_path),
         "reproduction_recipe_id": plan["knowledge"]["recipe_id"],
     }
@@ -1194,10 +1212,18 @@ def command_for(plan: Mapping[str, Any], manifest_path: Path) -> list[str]:
                     "--force-tutorial",
                     "--max-windows",
                     str(extraction["window_budget"]),
+                    "--tutorial-model",
+                    str(extraction["model"]),
+                    "--tutorial-profile",
+                    str(extraction["profile"]),
                 ]
             )
             if extraction.get("render_human_html") is True:
                 command.append("--render-tutorial-html")
+            if extraction.get("fallback_reason"):
+                command.extend(["--tutorial-fallback-reason", str(extraction["fallback_reason"])])
+            for learner_asset in extraction.get("input_assets", []):
+                command.extend(["--tutorial-input-asset", str(learner_asset)])
         return command
     entrypoint = plan.get("entrypoint") or {}
     if route == "python":
@@ -1228,15 +1254,19 @@ def _download_source_video(plan: dict[str, Any]) -> list[str] | None:
     url = str(plan["sources"].get("video_url") or "")
     if not url:
         raise LaunchError("video replay tutorial extraction has no video URL")
-    ytdlp = shutil.which("yt-dlp")
-    if not ytdlp:
+    executable = shutil.which("yt-dlp")
+    if executable:
+        ytdlp = [executable]
+    elif importlib.util.find_spec("yt_dlp") is not None:
+        ytdlp = [sys.executable, "-m", "yt_dlp"]
+    else:
         raise LaunchError(
-            "yt-dlp is required to materialize --video-url for tutorial extraction"
+            "the yt-dlp executable or Python module is required to materialize --video-url for tutorial extraction"
         )
     video_dir = Path(plan["video_dir"])
     output_template = video_dir / "source.%(ext)s"
     command = [
-        ytdlp,
+        *ytdlp,
         "--no-playlist",
         "--merge-output-format",
         "mp4",
@@ -1336,6 +1366,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Reference image path or http(s) URL; repeatable.",
     )
     parser.add_argument("--asset", help="Optional local source asset/project.")
+    parser.add_argument("--tutorial-input-asset", action="append", default=[],
+                        help="Actual learner texture, reference image or dependency folder; repeatable.")
     parser.add_argument("--target", "--recipe-id", dest="recipe_id", required=True)
     parser.add_argument("--knowledge-root", type=Path, default=DEFAULT_KNOWLEDGE_ROOT)
     parser.add_argument(
@@ -1354,9 +1386,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Model for extraction; gpt-5.5 is an explicit fallback only.",
     )
     parser.add_argument(
+        "--tutorial-profile",
+        choices=("economy", "balanced", "forensic"),
+        default="balanced",
+        help="Evidence density/cost profile for canonical tutorial extraction.",
+    )
+    parser.add_argument("--tutorial-fallback-reason", default="",
+                        help="Why gpt-5.6-sol is unavailable; required for gpt-5.5 extraction.")
+    parser.add_argument(
         "--tutorial-window-budget",
         type=int,
-        help="Maximum complete 60-second evidence windows for extraction.",
+        help="Maximum analysis groups; every group retains full chronological video coverage.",
     )
     parser.add_argument(
         "--render-tutorial-html",

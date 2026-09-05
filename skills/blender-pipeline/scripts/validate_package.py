@@ -83,6 +83,23 @@ REQUIRED_FILES = {
     Path("editing/schemas/source_map.schema.json"),
     Path("editing/schemas/edit_receipt.schema.json"),
     Path("generation/scripts/render_illustrated_tutorial.py"),
+    Path("tutorial-extraction/SKILL.md"),
+    Path("tutorial-extraction/agents/openai.yaml"),
+    Path("tutorial-extraction/requirements.txt"),
+    Path("tutorial-extraction/references/output-contract.md"),
+    Path("tutorial-extraction/references/profiles-and-evidence.md"),
+    Path("tutorial-extraction/schemas/manifest.schema.json"),
+    Path("tutorial-extraction/schemas/steps.schema.json"),
+    Path("tutorial-extraction/scripts/extract_video_tutorial.py"),
+    Path("tutorial-extraction/scripts/visual_tutorial_pipeline.py"),
+    Path("tutorial-extraction/scripts/prepare_video.py"),
+    Path("tutorial-extraction/scripts/validate_visual_package.py"),
+    Path("tutorial-extraction/references/evidence-ledger.md"),
+    Path("tutorial-extraction/references/markdown-layout.md"),
+    Path("tutorial-extraction/references/blender-capability-rubric.md"),
+    Path("tutorial-extraction/scripts/tutorial_extraction_core.py"),
+    Path("tutorial-extraction/scripts/validate_tutorial_package.py"),
+    Path("tutorial-extraction/tests/test_visual_tutorial_pipeline.py"),
     Path("knowledge/index.md"),
     Path("knowledge/manifest.json"),
     Path("knowledge/manifest.schema.json"),
@@ -108,6 +125,7 @@ REQUIRED_DIRS = {
     Path("editing/src/blender_edit_pipeline"),
     Path("editing/tests"),
     Path("reproduction/tests"),
+    Path("tutorial-extraction/tests"),
     Path("tests"),
 }
 LOCAL_IMPORT_PREFIXES = (
@@ -200,6 +218,7 @@ def check_completeness(root: Path) -> list[Issue]:
         root / "generation/SKILL.md",
         root / "editing/SKILL.md",
         root / "reproduction/SKILL.md",
+        root / "tutorial-extraction/SKILL.md",
     ):
         if not skill_path.is_file():
             continue

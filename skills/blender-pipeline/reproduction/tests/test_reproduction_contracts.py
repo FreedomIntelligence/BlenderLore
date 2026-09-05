@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPRODUCTION_ROOT = Path(__file__).resolve().parents[1]
@@ -253,6 +254,34 @@ class DirectGenerationPreflightTests(unittest.TestCase):
             self.assertNotEqual(0, completed.returncode)
             self.assertIn("positive --max-windows", completed.stderr)
             self.assertFalse(missing.exists())
+
+    def test_source_download_falls_back_to_python_yt_dlp_module(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            video_dir = Path(temporary) / "video"
+            video_dir.mkdir()
+            plan = {
+                "route": "video_replay",
+                "tutorial_extraction": {"mode": "extract"},
+                "sources": {
+                    "video_url": "https://www.bilibili.com/video/BV18xqdBYEEv/"
+                },
+                "video_dir": str(video_dir),
+            }
+
+            def run(command, **_kwargs):
+                (video_dir / "source.mp4").write_bytes(b"fixture")
+                return mock.Mock(returncode=0)
+
+            with (
+                mock.patch.object(launcher.shutil, "which", return_value=None),
+                mock.patch.object(
+                    launcher.importlib.util, "find_spec", return_value=object()
+                ),
+                mock.patch.object(launcher.subprocess, "run", side_effect=run),
+            ):
+                command = launcher._download_source_video(plan)
+            self.assertEqual([sys.executable, "-m", "yt_dlp"], command[:3])
+            self.assertTrue((video_dir / "source.mp4").is_file())
 
 
 if __name__ == "__main__":

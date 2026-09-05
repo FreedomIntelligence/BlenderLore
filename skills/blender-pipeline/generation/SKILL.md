@@ -40,12 +40,20 @@ new integrations must use the `BLENDER_PIPELINE_*` prefix.
 ## Replay verified tutorial evidence
 
 1. Put the source video and any transcript under one `video-dir`.
-2. Run `prepare_rich_tutorial_evidence.py`,
-   `generate_rich_tutorial_chunks.py`, `merge_rich_tutorial_chunks.py`, and
-   `build_pipeline_specs.py` as needed to create bounded evidence and specs.
-   `tutorial.md` and `steps_verified.json` are the operational tutorial
-   contract. Add `--render-tutorial-html` only when a separate human-readable
-   HTML view is useful; it is derived from the same verified steps and never
+2. Read the sibling [tutorial extraction skill](../tutorial-extraction/SKILL.md)
+   and run its canonical `extract_video_tutorial.py` entrypoint. It performs
+   the `video-to-visual-tutorial` workflow: coarse contact sheets, focused
+   frame inspection, a compact evidence ledger, and a complete learner-facing
+   procedure. Run the entrypoint with `--workspace-mode` to adapt that package
+   to the existing replay files. Pass actual learner assets with repeatable
+   `--input-asset`; do not classify the source video or acceptance preview as
+   a learner asset. The older generation
+   helpers are compatibility internals and must not be invoked as a second
+   extraction route. Run `build_pipeline_specs.py` after extraction.
+   `tutorial.md` and its derived `steps_verified.json` preserve the operational
+   contract. The separate rubric is never supplied as task instructions.
+   Add `--render-tutorial-html` only when a separate human-readable
+   HTML view is useful; it is rendered from the same complete Markdown and never
    replaces the operational files.
 3. Run `run_video_replay_main.py --video-dir <dir>`. The orchestrator invokes
    the strict replay, version registry, render evidence, and candidate

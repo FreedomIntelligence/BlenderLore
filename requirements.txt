@@ -1,5 +1,7 @@
-# Full Python environment for the maintained Blender pipeline skill.
--r skills/blender-pipeline/generation/requirements-knowledge.txt
+# Portable runtime; vector search/embeddings are optional, not a startup requirement.
+-r skills/blender-pipeline/generation/requirements.txt
+-r skills/blender-pipeline/tutorial-extraction/requirements.txt
+yt-dlp>=2024.1
 skills/blender-pipeline/editing
 
 # Blender, FFmpeg, and optional Tesseract OCR are system applications.

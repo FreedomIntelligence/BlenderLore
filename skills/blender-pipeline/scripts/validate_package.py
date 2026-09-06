@@ -35,6 +35,7 @@ IGNORED_DIRS = {
     ".ruff_cache",
     ".venv",
     "__pycache__",
+    "__MACOSX",
 }
 FORBIDDEN_ARTIFACT_SUFFIXES = {
     ".7z",
@@ -83,6 +84,7 @@ REQUIRED_FILES = {
     Path("editing/schemas/source_map.schema.json"),
     Path("editing/schemas/edit_receipt.schema.json"),
     Path("generation/scripts/render_illustrated_tutorial.py"),
+    Path("generation/scripts/codex_cli_chat_bridge.py"),
     Path("tutorial-extraction/SKILL.md"),
     Path("tutorial-extraction/agents/openai.yaml"),
     Path("tutorial-extraction/requirements.txt"),
@@ -92,6 +94,7 @@ REQUIRED_FILES = {
     Path("tutorial-extraction/schemas/steps.schema.json"),
     Path("tutorial-extraction/scripts/extract_video_tutorial.py"),
     Path("tutorial-extraction/scripts/visual_tutorial_pipeline.py"),
+    Path("tutorial-extraction/scripts/legacy_rich_tutorial_pipeline.py"),
     Path("tutorial-extraction/scripts/prepare_video.py"),
     Path("tutorial-extraction/scripts/validate_visual_package.py"),
     Path("tutorial-extraction/references/evidence-ledger.md"),
@@ -109,6 +112,9 @@ REQUIRED_FILES = {
     Path("knowledge/rendering-and-dynamics.md"),
     Path("knowledge/operations-and-knowledge.md"),
     Path("scripts/validate_package.py"),
+    Path("scripts/pipeline_launcher.py"),
+    Path("scripts/provided_tutorial.py"),
+    Path("scripts/inspect_input_asset.py"),
     Path("reproduction/SKILL.md"),
     Path("reproduction/references/execution-contract.md"),
     Path("reproduction/scripts/export_public_showcase_knowledge.py"),
@@ -166,7 +172,7 @@ def relative(path: Path, root: Path) -> str:
 
 def iter_files(root: Path, suffixes: set[str] | None = None) -> Iterable[Path]:
     for path in sorted(root.rglob("*")):
-        if any(part in IGNORED_DIRS for part in path.parts):
+        if any(part in IGNORED_DIRS or part.startswith("._") for part in path.parts):
             continue
         if not path.is_file():
             continue

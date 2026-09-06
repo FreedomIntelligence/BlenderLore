@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import time
@@ -251,7 +252,9 @@ def candidate_promotion_guard(
         and str(row.get("candidate_rule_id") or "").strip()
         and str(row.get("review_status") or "") == "candidate"
         and row.get("human_reviewed") is True
-        and str(row.get("outcome") or "") in {"accepted", "pass", "repaired"}
+        and str(row.get("outcome") or "") in {"accepted", "pass"}
+        and str(row.get("review_id") or "").strip()
+        and re.fullmatch(r"[0-9a-f]{64}", str(row.get("artifact_sha256") or ""))
     ]
     candidate_assets = {_promotion_asset_id(row) for row in valid_candidate_rows}
     candidate_rule_ids = {
@@ -264,6 +267,9 @@ def candidate_promotion_guard(
         blockers.append("candidate_evidence_must_be_candidate_human_reviewed_pass")
     if len(candidate_asset_rows) != len(set(candidate_asset_rows)):
         blockers.append("candidate_evidence_assets_must_be_unique")
+    candidate_hashes = {str(row["artifact_sha256"]) for row in valid_candidate_rows}
+    if len(candidate_hashes) != len(valid_candidate_rows):
+        blockers.append("candidate_artifacts_must_be_distinct")
     if len(candidate_rule_ids) != 1:
         blockers.append("candidate_evidence_requires_one_rule_identity")
 
@@ -281,6 +287,12 @@ def candidate_promotion_guard(
         baseline = str(row.get("baseline_status") or "")
         candidate = str(row.get("candidate_status") or "")
         regression = row.get("quality_regression")
+        if (
+            row.get("human_reviewed") is not True
+            or not str(row.get("review_id") or "").strip()
+            or not re.fullmatch(r"[0-9a-f]{64}", str(row.get("artifact_sha256") or ""))
+        ):
+            holdout_unattested.append(asset_id)
         if baseline != "accepted" or candidate != "accepted" or regression is not False:
             if regression is True or candidate != "accepted":
                 holdout_regressions.append(asset_id)
@@ -288,6 +300,12 @@ def candidate_promotion_guard(
                 holdout_unattested.append(asset_id)
     if not holdout_assets:
         blockers.append("accepted_holdout_required")
+    if candidate_assets.intersection(holdout_assets):
+        blockers.append("accepted_holdout_must_be_unrelated_to_candidate_assets")
+    if candidate_hashes.intersection(
+        str(row.get("artifact_sha256") or "") for row in accepted_holdout_records
+    ):
+        blockers.append("accepted_holdout_artifacts_must_be_unrelated")
     if len(holdout_asset_rows) != len(set(holdout_asset_rows)):
         blockers.append("accepted_holdout_assets_must_be_unique")
     if holdout_unattested:
@@ -305,6 +323,25 @@ def candidate_promotion_guard(
         "accepted_holdout_asset_ids": sorted(holdout_assets),
         "holdout_regression_asset_ids": sorted(set(holdout_regressions)),
         "holdout_unattested_asset_ids": sorted(set(holdout_unattested)),
+        "candidate_review_evidence": [
+            {key: row.get(key) for key in ("asset_id", "review_id", "artifact_sha256")}
+            for row in valid_candidate_rows
+        ],
+        "holdout_review_evidence": [
+            {
+                key: row.get(key)
+                for key in (
+                    "asset_id",
+                    "review_id",
+                    "artifact_sha256",
+                    "human_reviewed",
+                    "baseline_status",
+                    "candidate_status",
+                    "quality_regression",
+                )
+            }
+            for row in accepted_holdout_records
+        ],
         "blockers": sorted(set(blockers)),
     }
     return {
@@ -352,6 +389,28 @@ def _require_reviewed_promotion_evidence(
         raise ReplayKnowledgePromotionError(
             "reviewed chunk candidate_rule_id does not match promotion evidence"
         )
+    scope = evidence.get("scope")
+    if not isinstance(scope, dict) or not all(
+        str(scope.get(key) or "").strip()
+        for key in ("route", "asset_family", "blender_version")
+    ):
+        raise ReplayKnowledgePromotionError(
+            "reviewed knowledge requires route, asset family, and Blender version scope"
+        )
+    for chunk in chunks:
+        if chunk.review_status != "reviewed":
+            continue
+        if chunk.extra.get("outcome") not in kc.SUCCESS_OUTCOMES:
+            raise ReplayKnowledgePromotionError(
+                "only successful reusable knowledge can be promoted"
+            )
+        chunk.extra["admission"] = {
+            "schema": kc.ADMISSION_SCHEMA,
+            "kind": "reviewed_success",
+            "source_hash": chunk.source_hash,
+            "scope": dict(scope),
+            "promotion_decision": decision,
+        }
 
 
 def _merge_rows(
@@ -369,7 +428,7 @@ def _merge_rows(
         payload = chunk.payload() | {"text": chunk.text}
         position = positions.get(key)
         if position is not None:
-            if merged[position].get("source_hash") == chunk.source_hash:
+            if merged[position] == payload:
                 continue
             merged[position] = payload
             changed += 1
@@ -400,6 +459,7 @@ def _rebuild_qdrant(rows: list[dict[str, Any]], target: Path) -> dict[str, Any]:
 
 def _activate_manifest_generation(rows: list[dict[str, Any]], *, changed: int) -> None:
     parent = kc._current_build_payload()
+    use_qdrant = kc.active_qdrant_path() is not None
     builds_path = kc.KNOWLEDGE_ROOT / kc.BUILDS_PATH.name
     build_id = _new_generation_id(rows)
     build_dir = builds_path / build_id
@@ -414,11 +474,11 @@ def _activate_manifest_generation(rows: list[dict[str, Any]], *, changed: int) -
     summary_path = build_dir / "index_summary.json"
     try:
         kc.write_jsonl(rows, manifest_path)
-        qdrant_summary = _rebuild_qdrant(rows, qdrant_path)
+        qdrant_summary = _rebuild_qdrant(rows, qdrant_path) if use_qdrant else None
         summary = {
             "schema_version": "blender-knowledge-index-summary-v1",
             "build_id": build_id,
-            "generation_kind": "replay_incremental_full_index",
+            "generation_kind": "reviewed_success_projection",
             "manifest": str(manifest_path),
             "qdrant": qdrant_summary,
             "chunks": len(rows),
@@ -430,10 +490,11 @@ def _activate_manifest_generation(rows: list[dict[str, Any]], *, changed: int) -
             "schema_version": "blender-knowledge-current-v1",
             "build_id": build_id,
             "manifest": manifest_path.relative_to(kc.KNOWLEDGE_ROOT).as_posix(),
-            "qdrant": qdrant_path.relative_to(kc.KNOWLEDGE_ROOT).as_posix(),
             "summary": summary_path.relative_to(kc.KNOWLEDGE_ROOT).as_posix(),
             "activated_at": time.strftime("%FT%T%z"),
         }
+        if use_qdrant:
+            current["qdrant"] = qdrant_path.relative_to(kc.KNOWLEDGE_ROOT).as_posix()
         kc.atomic_write_json(kc.CURRENT_BUILD_PATH, current)
     except BaseException:
         shutil.rmtree(build_dir, ignore_errors=True)
@@ -446,62 +507,51 @@ def append_unique(
     promotion_evidence: dict[str, Any] | None = None,
 ) -> int:
     _require_reviewed_promotion_evidence(chunks, promotion_evidence)
+    admitted = [
+        chunk for chunk in chunks if kc.active_knowledge_eligible(chunk.payload())
+    ]
+    candidates = [
+        chunk
+        for chunk in chunks
+        if chunk.review_status == "candidate"
+        and chunk.extra.get("outcome") in kc.SUCCESS_OUTCOMES
+    ]
     with kc.knowledge_store_lock():
+        if candidates:
+            path = candidate_manifest_path()
+            candidate_rows, candidate_changes = _merge_rows(
+                kc.read_jsonl(path), candidates
+            )
+            if candidate_changes:
+                kc.write_jsonl(candidate_rows, path)
         rows = kc.read_jsonl(kc.active_manifest_path())
-        merged, changed = _merge_rows(rows, chunks)
+        clean_rows = [row for row in rows if kc.active_knowledge_eligible(row)]
+        merged, changed = _merge_rows(clean_rows, admitted)
+        changed += len(rows) - len(clean_rows)
         if changed:
             _activate_manifest_generation(merged, changed=changed)
         return changed
 
 
-def candidate_failure_episode_chunks(
-    episode_path: Path,
-) -> list[kc.KnowledgeChunk]:
-    resolved = episode_path.expanduser().resolve()
-    chunks: list[kc.KnowledgeChunk] = []
-    for line_number, line in enumerate(
-        resolved.read_text(encoding="utf-8").splitlines(),
-        start=1,
-    ):
-        if not line.strip():
-            continue
-        try:
-            episode = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise ReplayKnowledgePromotionError(
-                f"candidate episode JSONL malformed at line {line_number}"
-            ) from exc
-        if (
-            not isinstance(episode, dict)
-            or episode.get("schema") != "video-replay-quality-failure-episode.v2"
-            or episode.get("promotion_status") != "candidate"
-            or episode.get("production_enforcement")
-            != "candidate_only_no_production_parameter_change"
-            or not str(episode.get("episode_id") or "")
-        ):
-            raise ReplayKnowledgePromotionError("candidate failure episode is invalid")
-        work_item_id = str(episode.get("work_item_id") or "")
-        episode_id = str(episode["episode_id"])
-        chunk = kc.make_chunk(
-            resolved,
-            f"{work_item_id}:manual_visual_failure:{episode_id}",
-            json.dumps(episode, ensure_ascii=False, indent=2),
-            source_type="run_artifact",
-            extra={
-                "source_kind": str(episode.get("workload_kind") or ""),
-                "outcome": "manual_visual_not_publishable",
-                "promotion_status": "candidate",
-                "production_enforcement": (
-                    "candidate_only_no_production_parameter_change"
-                ),
-                "candidate_rule_ids": list(episode.get("candidate_rule_ids") or []),
-            },
-            logical_key=("video_replay_manual_quality_failure:" + episode_id),
+def candidate_manifest_path() -> Path:
+    """Successful but unreviewed observations never share the active store."""
+
+    root = (
+        Path(
+            os.environ.get(
+                "BLENDER_KNOWLEDGE_CANDIDATE_ROOT",
+                str(kc.KNOWLEDGE_ROOT.parent / f"{kc.KNOWLEDGE_ROOT.name}_candidates"),
+            )
         )
-        chunk.knowledge_type = "episodic"
-        chunk.review_status = "candidate"
-        chunks.append(chunk)
-    return chunks
+        .expanduser()
+        .resolve()
+    )
+    active_root = kc.KNOWLEDGE_ROOT.resolve()
+    if root == active_root or active_root in root.parents:
+        raise ReplayKnowledgePromotionError(
+            "candidate root must be outside the active knowledge root"
+        )
+    return root / "candidates.jsonl"
 
 
 def load_json(path: Path) -> dict:
@@ -592,21 +642,9 @@ def build_knowledge_input_snapshot(
 def _split_markdown_text(
     text: str, *, fallback_title: str, max_chars: int = 2600
 ) -> list[tuple[str, str]]:
-    matches = list(re.finditer(r"^(#{1,4})\s+(.+)$", text, flags=re.M))
-    if not matches:
-        return [(fallback_title, text[:max_chars])]
-    sections: list[tuple[str, str]] = []
-    for index, match in enumerate(matches):
-        title = match.group(2).strip()
-        start = match.start()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        body = text[start:end].strip()
-        for part_index, part in enumerate(
-            kc.split_long_text(body, max_chars=max_chars)
-        ):
-            suffix = f" part {part_index + 1}" if part_index else ""
-            sections.append((title + suffix, part))
-    return sections
+    return kc.split_markdown_text(
+        text, fallback_title=fallback_title, max_chars=max_chars
+    )
 
 
 def chunks_from_knowledge_snapshot(
@@ -694,55 +732,8 @@ def chunks_from_knowledge_snapshot(
                 # One video can never promote itself into executable guidance.
                 chunk.review_status = "candidate"
                 chunks.append(chunk)
-    else:
-        review_issues = list(
-            review.get("issues")
-            if isinstance(review.get("issues"), list)
-            else ["pipeline_review.json is missing or invalid"]
-        )
-        failure_taxonomy = classify_replay_failure_taxonomy(review_issues)
-        failure_text = json.dumps(
-            {
-                "schema": "video-replay-quality-failure-episode.v2",
-                "status": review.get("status") or "missing_review",
-                "issues": review_issues,
-                "checks": review.get("checks") or {},
-                "failure_taxonomy": failure_taxonomy,
-                "candidate_rule_ids": [
-                    "video_replay_quality:" + str(category.get("category") or "")
-                    for category in failure_taxonomy["categories"]
-                    if str(category.get("category") or "")
-                ],
-                "promotion_status": "candidate",
-                "promotion_guard": {
-                    "minimum_distinct_human_reviewed_assets": (MIN_PROMOTION_ASSETS),
-                    "accepted_holdout_zero_regression_required": True,
-                },
-                "production_enforcement": (
-                    "candidate_only_no_production_parameter_change"
-                ),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-        chunk = kc.make_chunk(
-            video_dir / "pipeline_review.json",
-            f"{logical_video_id}:failure_episode",
-            failure_text,
-            source_type="run_artifact",
-            extra={
-                "video_dir": str(video_dir),
-                "updated_at": updated_at,
-                "outcome": "qa_failed",
-                "source_kind": source_kind,
-                "semantic_source_kind": semantic_source_kind,
-                "source_evidence": source_evidence,
-            },
-            logical_key=f"{source_kind}:{logical_video_id}:failure_episode",
-        )
-        chunk.knowledge_type = "episodic"
-        chunk.review_status = "candidate"
-        chunks.append(chunk)
+    # Rejected and missing-review runs retain their diagnostic source files,
+    # but never become knowledge chunks, even as advisory candidates.
     return chunks, passed
 
 
@@ -763,6 +754,10 @@ def update_from_knowledge_snapshot(
         "chunks_changed": changed,
         "chunks_added": changed,
         "chunk_count": len(chunks),
+        "candidate_manifest": str(candidate_manifest_path()) if chunks else "",
+        "admission": "successful_observation_staged_outside_active_library"
+        if chunks
+        else "not_admitted",
         "outcome": "qa_passed" if passed else "qa_failed",
     }
 

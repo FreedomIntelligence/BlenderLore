@@ -18,8 +18,11 @@ def fail(message):
 
 def content_entries(directory):
     """Ignore filesystem metadata created by macOS on removable drives."""
-    return [item for item in directory.iterdir()
-            if item.name != ".DS_Store" and not item.name.startswith("._")]
+    return [
+        item
+        for item in directory.iterdir()
+        if item.name != ".DS_Store" and not item.name.startswith("._")
+    ]
 
 
 def digest(path):
@@ -86,12 +89,12 @@ def validate_markdown(path, image_dir, allowed_hashes=None, cover_frame=None):
 
     if len(normalized) != len(set(normalized)):
         fail("tutorial references the same image more than once")
-    stored = {
-        item.name for item in content_entries(image_dir) if item.is_file()
-    }
+    stored = {item.name for item in content_entries(image_dir) if item.is_file()}
     referenced = {PurePosixPath(ref).name for ref in normalized}
     if stored != referenced:
-        fail(f"image directory and Markdown references differ: stored={sorted(stored)}, referenced={sorted(referenced)}")
+        fail(
+            f"image directory and Markdown references differ: stored={sorted(stored)}, referenced={sorted(referenced)}"
+        )
     if any(item.is_dir() for item in content_entries(image_dir)):
         fail("output/image must not contain subdirectories")
 
@@ -122,9 +125,22 @@ def validate_rubric(path):
         value = row.get("points")
         if not isinstance(value, int) or value <= 0:
             fail(f"invalid points for {check_id}")
-        for field in ("criterion", "scoring_rule"):
-            if not isinstance(row.get(field), str) or not row[field].strip():
-                fail(f"missing {field} for {check_id}")
+        if not isinstance(row.get("criterion"), str) or not row["criterion"].strip():
+            fail(f"missing criterion for {check_id}")
+        rule = row.get("scoring_rule")
+        text_rule = isinstance(rule, str) and bool(rule.strip())
+        status_rule = (
+            isinstance(rule, dict)
+            and set(rule) == {"PASS", "PARTIAL", "FAIL"}
+            and all(
+                isinstance(condition, str) and condition.strip()
+                for condition in rule.values()
+            )
+        )
+        if not (text_rule or status_rule):
+            fail(
+                f"scoring_rule for {check_id} needs nonempty text or explicit PASS/PARTIAL/FAIL conditions"
+            )
         ids.append(check_id)
         points += value
         totals[capability] = totals.get(capability, 0) + value
@@ -149,9 +165,13 @@ def validate_rubric(path):
     for check_id in ids:
         if check_id not in source:
             fail(f"rubric check has no verifier implementation: {check_id}")
-    source_ids = set(re.findall(r"(?:GEO|PROC|SURF|SCN|RIG|ANM|SIM|PIPE)-\d{2}", source))
+    source_ids = set(
+        re.findall(r"(?:GEO|PROC|SURF|SCN|RIG|ANM|SIM|PIPE)-\d{2}", source)
+    )
     if source_ids != set(ids):
-        fail(f"verifier checks {sorted(source_ids)} do not match rubric checks {sorted(ids)}")
+        fail(
+            f"verifier checks {sorted(source_ids)} do not match rubric checks {sorted(ids)}"
+        )
     return len(rows)
 
 
@@ -174,16 +194,26 @@ def main():
     directories = [item for item in top_level if item.is_dir()]
     tutorials = [item for item in files if item.suffix.lower() == ".md"]
     rubrics = [item for item in files if item.suffix.lower() == ".json"]
-    if len(files) != 2 or len(tutorials) != 1 or len(rubrics) != 1 or directories != [image_dir]:
-        fail("output must contain one tutorial .md, one rubric .json, and one image directory")
+    if (
+        len(files) != 2
+        or len(tutorials) != 1
+        or len(rubrics) != 1
+        or directories != [image_dir]
+    ):
+        fail(
+            "output must contain one tutorial .md, one rubric .json, and one image directory"
+        )
 
-    ledger_data, evidence_frames = validate_ledger(args.ledger.resolve()) if args.ledger else (None, [])
+    ledger_data, evidence_frames = (
+        validate_ledger(args.ledger.resolve()) if args.ledger else (None, [])
+    )
     cover = args.cover_frame.resolve() if args.cover_frame else None
     allowed_hashes = {digest(item) for item in evidence_frames}
     if cover:
         allowed_hashes.add(digest(cover))
     text, image_count = validate_markdown(
-        tutorials[0], image_dir,
+        tutorials[0],
+        image_dir,
         allowed_hashes=allowed_hashes if (evidence_frames or cover) else None,
         cover_frame=cover,
     )

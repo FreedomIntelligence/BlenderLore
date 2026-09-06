@@ -919,7 +919,9 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
     if tutorial_mode == "extract":
         reason = str(args.tutorial_fallback_reason).strip()
         if (args.tutorial_model == "gpt-5.5") != bool(reason):
-            raise LaunchError("gpt-5.5 extraction requires --tutorial-fallback-reason; omit it for gpt-5.6-sol")
+            raise LaunchError(
+                "gpt-5.5 extraction requires --tutorial-fallback-reason; omit it for gpt-5.6-sol"
+            )
         if not replay_enabled:
             raise LaunchError(
                 "tutorial extraction is only valid for a video-replay recipe"
@@ -995,7 +997,9 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
             "mode": tutorial_mode,
             "model": args.tutorial_model if tutorial_mode == "extract" else None,
             "profile": args.tutorial_profile if tutorial_mode == "extract" else None,
-            "fallback_reason": args.tutorial_fallback_reason if tutorial_mode == "extract" else "",
+            "fallback_reason": args.tutorial_fallback_reason
+            if tutorial_mode == "extract"
+            else "",
             "input_assets": list(dict.fromkeys(learner_assets)),
             "window_budget": (
                 args.tutorial_window_budget if tutorial_mode == "extract" else None
@@ -1221,7 +1225,9 @@ def command_for(plan: Mapping[str, Any], manifest_path: Path) -> list[str]:
             if extraction.get("render_human_html") is True:
                 command.append("--render-tutorial-html")
             if extraction.get("fallback_reason"):
-                command.extend(["--tutorial-fallback-reason", str(extraction["fallback_reason"])])
+                command.extend(
+                    ["--tutorial-fallback-reason", str(extraction["fallback_reason"])]
+                )
             for learner_asset in extraction.get("input_assets", []):
                 command.extend(["--tutorial-input-asset", str(learner_asset)])
         return command
@@ -1366,8 +1372,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Reference image path or http(s) URL; repeatable.",
     )
     parser.add_argument("--asset", help="Optional local source asset/project.")
-    parser.add_argument("--tutorial-input-asset", action="append", default=[],
-                        help="Actual learner texture, reference image or dependency folder; repeatable.")
+    parser.add_argument(
+        "--tutorial-input-asset",
+        action="append",
+        default=[],
+        help="Actual learner texture, reference image or dependency folder; repeatable.",
+    )
     parser.add_argument("--target", "--recipe-id", dest="recipe_id", required=True)
     parser.add_argument("--knowledge-root", type=Path, default=DEFAULT_KNOWLEDGE_ROOT)
     parser.add_argument(
@@ -1391,8 +1401,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="balanced",
         help="Evidence density/cost profile for canonical tutorial extraction.",
     )
-    parser.add_argument("--tutorial-fallback-reason", default="",
-                        help="Why gpt-5.6-sol is unavailable; required for gpt-5.5 extraction.")
+    parser.add_argument(
+        "--tutorial-fallback-reason",
+        default="",
+        help="Why gpt-5.6-sol is unavailable; required for gpt-5.5 extraction.",
+    )
     parser.add_argument(
         "--tutorial-window-budget",
         type=int,

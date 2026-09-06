@@ -113,10 +113,18 @@ def collect_skill_chunks() -> list[kc.KnowledgeChunk]:
             raise kc.KnowledgeManifestError(
                 f"required skill document is missing: {path}"
             )
-        chunks.extend(
-            kc.make_chunk(path, title, body, source_type="skill")
-            for title, body in kc.split_markdown_sections(path)
-        )
+        for title, body in kc.split_markdown_sections(path):
+            chunk = kc.make_chunk(path, title, body, source_type="skill")
+            # Package-maintained instructions are useful curated guidance, not
+            # invented human-reviewed evidence for a successful render recipe.
+            chunk.review_status = "curated"
+            chunk.extra["admission"] = {
+                "schema": kc.ADMISSION_SCHEMA,
+                "kind": "curated_guidance",
+                "provenance": "packaged_manifest",
+                "source_hash": chunk.source_hash,
+            }
+            chunks.append(chunk)
     return chunks
 
 
@@ -323,6 +331,8 @@ def build_chunks(
     chunks.extend(collect_external_production_chunks(external_manifests))
     dedup: dict[str, kc.KnowledgeChunk] = {}
     for chunk in chunks:
+        if not kc.active_knowledge_eligible(chunk.payload()):
+            continue
         if len(chunk.text.strip()) < 80:
             continue
         dedup[chunk.source_id] = chunk
@@ -330,6 +340,10 @@ def build_chunks(
 
 
 def recreate_qdrant(chunks: list[kc.KnowledgeChunk], target: Path) -> dict[str, Any]:
+    if any(not kc.active_knowledge_eligible(chunk.payload()) for chunk in chunks):
+        raise kc.KnowledgeManifestError(
+            "active index only accepts admitted useful guidance or reviewed success"
+        )
     from qdrant_client.models import Distance, PointStruct, VectorParams
 
     if target.exists():
@@ -373,6 +387,12 @@ def new_build_id(chunks: list[kc.KnowledgeChunk]) -> str:
 def build_generation(
     chunks: list[kc.KnowledgeChunk], *, manifest_only: bool
 ) -> dict[str, Any]:
+    if not chunks or any(
+        not kc.active_knowledge_eligible(chunk.payload()) for chunk in chunks
+    ):
+        raise kc.KnowledgeManifestError(
+            "active generation requires nonempty admitted knowledge"
+        )
     build_id = new_build_id(chunks)
     build_dir = kc.BUILDS_PATH / build_id
     suffix = 1
@@ -392,7 +412,11 @@ def build_generation(
             "build_id": build_id,
             "manifest": str(manifest_path),
             "chunks": len(chunks),
-            "render_recipes": len(collect_render_recipe_chunks()),
+            "render_recipes": sum(
+                bool(chunk.extra.get("recipe_id")) for chunk in chunks
+            ),
+            "admission_policy": "curated_guidance_or_reviewed_success_only",
+            "excluded_unreviewed_render_recipes": len(collect_render_recipe_chunks()),
             "review_status_counts": {},
             "asset_family_counts": {},
         }
@@ -438,7 +462,7 @@ def main() -> int:
         type=Path,
         action="append",
         default=[],
-        help="Explicit read-only production artifact manifest; may be repeated.",
+        help="Explicit read-only production artifact manifest; raw observations remain excluded from the active success index.",
     )
     args = parser.parse_args()
 

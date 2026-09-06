@@ -136,23 +136,26 @@ device, and independent of Blender's later renderer attestation.
 **Applies when:** A prepared task claims to be knowledge-backed.
 
 **Rule:** A populated version label is insufficient. Resolve one explicit
-knowledge root across preparation and workers, validate its active manifest and
-index directory, and retain a nonempty retrieval pack. Never accept an implicit
-empty runtime-local store.
+knowledge root across preparation and workers, validate its active manifest,
+and retain a nonempty retrieval pack. A manifest-only generation uses local
+lexical retrieval and does not require a vector index, embedding model,
+network service, or an external worker. Never accept an implicit empty store.
 
 **Verify:** The retrieval pack states active generation, query, selected rules,
-and availability; missing manifest/index is a preparation block, not a silent
-fallback.
+and availability; a missing manifest or empty usable selection is a preparation
+block. A deliberately manifest-only generation is available, not degraded.
 
 **Search terms:** `knowledge root`, `active index`, `retrieval pack`, `empty fallback`
 
 ## Apply knowledge events asynchronously and fairly
 
-**Applies when:** Terminal failures or accepted lessons feed a searchable
-knowledge index.
+**Applies when:** Accepted lessons are projected into a searchable knowledge
+index, while terminal run events remain in control storage.
 
-**Rule:** GPU work emits immutable events to a zero-GPU consumer. Rebuild and
-index switching are atomic projections. A bounded consumer limits unapplied
+**Rule:** GPU work emits immutable diagnostic events to a zero-GPU consumer;
+events are not themselves admitted knowledge. Only admitted success lessons
+can update the active library. Rebuild and index switching are atomic
+projections. A bounded consumer limits unapplied
 events, not filenames scanned; already applied receipts are skipped before the
 limit so early files cannot starve later knowledge.
 
@@ -164,21 +167,109 @@ the prior complete generation or the new complete generation.
 
 ## Promote rules only after independent validation
 
-**Applies when:** A failure or repair suggests a reusable pipeline rule.
+**Applies when:** A successful application suggests a reusable pipeline rule.
 
-**Rule:** Keep the observation as a candidate until at least five distinct
-reviewed assets cover it and an accepted unrelated holdout shows zero quality
+**Rule:** Keep a successful observation outside active retrieval as a candidate
+until at least five distinct human-reviewed accepted assets cover the same
+rule and an accepted unrelated holdout shows zero quality
 regression. Route- and family-specific knowledge stays scoped; a repair from
 one hair, cloth, material, or editing task cannot become a global default. A
-formally provable safety invariant may bypass the five-asset empirical count,
-but must state its proof obligation and cannot claim quality improvement.
+repaired outcome without explicit acceptance is insufficient. Failed examples
+remain diagnostics and cannot be promoted. A formally provable safety invariant
+belongs in reviewed package guidance, with its proof obligation stated; it
+cannot use the success-lesson promotion API to bypass empirical admission or
+claim quality improvement.
 
-**Verify:** Promotion records scope, decision changed, five-asset coverage or
-the formal safety proof, accepted unrelated holdout outcome, zero-regression
-result, and rollback path. Automated findings are never mislabeled as direct
-human review.
+**Verify:** Promotion records route, asset family, Blender version, one rule
+identity, five unique accepted assets, named review IDs and artifact hashes,
+and disjoint accepted holdout assets with human review and explicit
+zero-regression results. The active row binds its source hash to the admission
+decision. Automated findings are never mislabeled as direct human review.
 
 **Search terms:** `knowledge promotion`, `candidate rule`, `independent holdout`, `anti-overfit`
+
+## Store only useful guidance and admitted successful lessons
+
+**Applies when:** A maintainer builds or updates the portable knowledge package.
+
+**Rule:** `knowledge/manifest.json` explicitly lists the six maintained
+Markdown references; the builder also includes the router and generation
+entrypoints. These receive `curated` status, not fabricated human approval.
+Run output directories are never crawled. Raw external JSON/JSONL manifests
+may be read only through declared, contained paths, but their candidate rows
+are excluded from the active index. Unreviewed render recipes and disabled
+showcase catalog metadata are not successful knowledge. A success lesson enters
+only through the promotion gate above, with `reviewed` status and a hash-bound
+admission record.
+
+**Verify:** Both index builders and both retrieval backends reject candidates,
+deprecated entries, unapproved legacy rows, and unsuccessful outcomes. Mentioning
+"failure" in a general safety rule does not make the rule a failed example.
+
+**Search terms:** `active library`, `curated guidance`, `success-only admission`, `manifest allowlist`
+
+## Keep candidates and diagnostics outside the active store
+
+**Applies when:** A replay finishes or an older knowledge generation is updated.
+
+**Rule:** A passing automated review can stage tutorial observations in the
+sibling `<knowledge-root>_candidates/candidates.jsonl`, never in active retrieval.
+`BLENDER_KNOWLEDGE_CANDIDATE_ROOT` may override that location only outside
+`BLENDER_KNOWLEDGE_ROOT`. Failed or missing-review snapshots produce no chunks;
+their existing review files remain diagnostic evidence. Updating an older
+generation filters out non-admitted rows before atomically activating its
+replacement. Previous immutable builds are not queried as a fallback.
+
+**Verify:** A passing replay alone changes no active lesson, and a rejected
+replay creates neither an active chunk nor a candidate lesson. No rebuild or
+candidate write requires repeating a paid or Blender stage.
+
+**Search terms:** `candidate staging`, `diagnostic separation`, `success observation`, `legacy cleanup`
+
+## Chunk by decision boundary with explicit length limits
+
+**Applies when:** Markdown guidance or a successful candidate tutorial is indexed.
+
+**Rule:** Split at Markdown headings of levels one through four outside fenced
+code and preserve nonempty text before the first heading. Repeated heading
+titles receive deterministic occurrence suffixes. Pack whole blank-line-separated
+paragraphs up to 2,200 characters for packaged guidance or 2,600 for tutorial
+candidates. A single oversized paragraph is hard-sliced at that character
+limit; no heading-free tail is discarded. Parts have deterministic title
+suffixes and zero overlap. Packaged chunks shorter than 80 characters are
+omitted. Source IDs hash source type, canonical path, and section/part title;
+source hashes track normalized body content, so updates replace the same
+logical section instead of duplicating it. This is character-based splitting,
+not token, embedding, visual-frame, or sliding-window segmentation.
+
+**Verify:** A long paragraph and a heading-free document retain all content,
+each emitted body stays within its configured bound, and repeated ingestion
+has a stable logical identity. Source text remains authoritative when a
+retrieval excerpt ends before a complete rule.
+
+**Search terms:** `chunk size`, `Markdown section`, `zero overlap`, `stable source identity`
+
+## Retrieve locally before configuring optional vector search
+
+**Applies when:** A fresh checkout or a portable launcher needs bundled guidance.
+
+**Rule:** Set `BLENDER_KNOWLEDGE_ROOT` to the run's control directory and run
+`build_blender_knowledge_index.py --manifest-only`. Then use the same root with
+`retrieve_blender_knowledge.py --video-dir <dir> --output <pack.json>`. This
+standard-library path requires no separate worker, private store, model
+download, or Qdrant installation. Optional vector generations use cosine search;
+an index error falls back only to the same active manifest. Lexical retrieval
+scores query-word occurrence plus family and feature matches. Both paths filter
+admission before exposing results; default top-k is ten and each pack excerpt
+is capped at 1,400 characters. Source documents supply the complete rule.
+
+**Verify:** The pack names its manifest, backend, query context, selected source
+IDs, admission policy, and availability. Retrieved guidance never overrides
+video evidence; only an exact executable canonical recipe with independent
+approval can become a hard constraint. Curated guidance remains labeled as
+guidance, not a proven-success recipe.
+
+**Search terms:** `manifest lexical`, `offline retrieval`, `knowledge root`, `retrieval pack`
 
 ## Gate series expansion with artifact-bound review
 

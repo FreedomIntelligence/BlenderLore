@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import os
+import re
 import sys
 import time
 from io import BytesIO
@@ -49,6 +51,24 @@ def model_timeout() -> tuple[float, float]:
 
 def now() -> str:
     return time.strftime("%F %T")
+
+
+def safe_provider_http_error(response: Any) -> RuntimeError:
+    """Return an actionable error without echoing a provider response body."""
+
+    raw = bytes(response.content)
+    digest = hashlib.sha256(raw[: 1024 * 1024]).hexdigest()
+    provider_code = ""
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        value = None
+    if isinstance(value, dict) and isinstance(value.get("error"), dict):
+        candidate = str(value["error"].get("code") or "").strip()
+        if re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", candidate):
+            provider_code = candidate
+    detail = f"; provider_error_code={provider_code}" if provider_code else ""
+    return RuntimeError(f"HTTP {response.status_code}: body_sha256={digest}{detail}")
 
 
 def append_usage(
@@ -156,7 +176,7 @@ def call_model(
             semantic_input=primary_semantic_input,
         )
         if response.status_code >= 400:
-            raise RuntimeError(f"HTTP {response.status_code}: {response.text[:1000]}")
+            raise safe_provider_http_error(response)
         data = response.json()
         append_usage(
             video_dir,
@@ -232,7 +252,7 @@ def call_model(
             semantic_input=repair_semantic_input,
         )
         if response.status_code >= 400:
-            raise RuntimeError(f"HTTP {response.status_code}: {response.text[:1000]}")
+            raise safe_provider_http_error(response)
         data = response.json()
         append_usage(
             video_dir,

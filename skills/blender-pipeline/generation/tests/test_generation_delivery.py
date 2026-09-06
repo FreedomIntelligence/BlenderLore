@@ -18,6 +18,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import run_video_replay_main as replay_main
 import run_video_strict_replay as strict_replay
+import generate_rich_tutorial_chunks as rich_tutorial
 from video_replay_delivery_contract import (
     CANONICAL_SIX_VIEW_NAMES,
     complete_six_view_delivery,
@@ -53,6 +54,28 @@ class _TrajectoryStub:
 
 
 class GenerationDeliveryTests(unittest.TestCase):
+    def test_rich_tutorial_provider_error_exposes_only_safe_code(self) -> None:
+        response = SimpleNamespace(
+            status_code=428,
+            content=json.dumps(
+                {
+                    "error": {
+                        "code": "insufficient_user_quota",
+                        "message": (
+                            "sentinel-key https://private-gateway.invalid "
+                            "request id: private-request"
+                        ),
+                    }
+                }
+            ).encode("utf-8"),
+        )
+        message = str(rich_tutorial.safe_provider_http_error(response))
+        self.assertIn("HTTP 428", message)
+        self.assertIn("provider_error_code=insufficient_user_quota", message)
+        self.assertNotIn("sentinel-key", message)
+        self.assertNotIn("private-gateway", message)
+        self.assertNotIn("private-request", message)
+
     def test_force_tutorial_routes_only_through_canonical_sibling_skill(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             video_dir = Path(directory)
@@ -71,16 +94,12 @@ class GenerationDeliveryTests(unittest.TestCase):
 
             def run(command, **_kwargs):
                 captured.append(list(command))
-                (video_dir / "tutorial.md").write_text(
-                    "# verified\n", encoding="utf-8"
-                )
+                (video_dir / "tutorial.md").write_text("# verified\n", encoding="utf-8")
                 (video_dir / "tutorial_path_refs.md").write_text(
                     "# verified\n", encoding="utf-8"
                 )
                 (video_dir / "tutorial_manifest.json").write_text(
-                    json.dumps(
-                        {"schema": "video2blender-tutorial-manifest.v2"}
-                    ),
+                    json.dumps({"schema": "video2blender-tutorial-manifest.v2"}),
                     encoding="utf-8",
                 )
                 (video_dir / "steps_verified.json").write_text(
@@ -101,9 +120,7 @@ class GenerationDeliveryTests(unittest.TestCase):
             with patch.object(replay_main, "run", side_effect=run):
                 replay_main.ensure_tutorial(video_dir, args)
             self.assertEqual(1, len(captured))
-            self.assertEqual(
-                replay_main.TUTORIAL_EXTRACTOR, Path(captured[0][1])
-            )
+            self.assertEqual(replay_main.TUTORIAL_EXTRACTOR, Path(captured[0][1]))
             self.assertIn("--profile", captured[0])
             self.assertIn("--model", captured[0])
             self.assertIn("--workspace-mode", captured[0])
@@ -289,13 +306,7 @@ class GenerationDeliveryTests(unittest.TestCase):
                 {
                     "VIDEO2BLENDER_PRESERVE_SOURCE_RENDER_SETTINGS": "1",
                     "VIDEO2BLENDER_POSTPROCESS_ENGINE": "BLENDER_EEVEE",
-                    "TOTAL_ASSET_EXPECTED_GPU_UUID": (
-                        "GPU-00000000-0000-0000-0000-000000000001"
-                    ),
-                    "VIDEO2BLENDER_GPU_PROCESS_ATTESTED": "1",
-                    "VIDEO2BLENDER_GPU_PROCESS_ATTESTED_UUID": (
-                        "gpu-00000000-0000-0000-0000-000000000001"
-                    ),
+                    "BLENDER_PIPELINE_RENDER_DEVICE_POLICY": "local",
                 }
             )
             completed = subprocess.run(
@@ -338,6 +349,12 @@ class GenerationDeliveryTests(unittest.TestCase):
                 (out_dir / "presentation_camera.json").read_text(encoding="utf-8")
             )
             self.assertEqual(presentation["mode"], "authored_source_camera")
+            render_receipt = json.loads(
+                (out_dir / "postprocess_render_receipt.json").read_text()
+            )
+            self.assertEqual(render_receipt["render_device_policy"], "local")
+            self.assertFalse(render_receipt["gpu_process_attested"])
+            self.assertEqual(render_receipt["observed_gpu_uuid"], "")
             shutil.copy2(blend, out_dir / "asset.blend")
             (root / "motion_plan.json").write_text(
                 json.dumps({"motion_type": "static"}), encoding="utf-8"

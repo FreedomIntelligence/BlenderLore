@@ -134,6 +134,32 @@ def read_paid_api_secret(
     return value
 
 
+def model_provider() -> str:
+    provider = os.environ.get("BLENDER_PIPELINE_PROVIDER", "api").strip().lower()
+    if provider not in {"api", "codex-cli"}:
+        raise ValueError("BLENDER_PIPELINE_PROVIDER must be api or codex-cli")
+    return provider
+
+
+def read_model_credential(path: Path) -> str:
+    """The authenticated Codex CLI does not require or read an API credential."""
+
+    return "" if model_provider() == "codex-cli" else read_paid_api_secret(path)
+
+
+def _provider_prompt_version(value: str) -> str:
+    return f"codex-cli:{value}" if model_provider() == "codex-cli" else value
+
+
+def _provider_ledger_path(video_dir: Path) -> Path:
+    if (
+        model_provider() == "codex-cli"
+        and not os.environ.get("VIDEO_REPLAY_PAID_API_LEDGER", "").strip()
+    ):
+        return video_dir.resolve() / ".control/model_calls/ledger.sqlite3"
+    return ledger_path()
+
+
 @dataclass(frozen=True)
 class DurableModelResponse:
     logical_call_id: str
@@ -426,6 +452,19 @@ def call_chat_completions(
 ) -> DurableModelResponse:
     """Persist, submit at most once, and replay by deterministic call identity."""
 
+    if model_provider() == "codex-cli":
+        return _call_codex_completions(
+            video_dir=video_dir,
+            stage=stage,
+            stage_key=stage_key,
+            prompt_version=prompt_version,
+            model=model,
+            payload=payload,
+            timeout=timeout,
+            semantic_input=semantic_input,
+            ledger=ledger,
+        )
+
     if not api_key.strip():
         raise ValueError("paid API key is empty")
     normalized_endpoint = normalize_chat_completions_endpoint(endpoint)
@@ -531,6 +570,75 @@ def call_chat_completions(
             durable=durable,
             logical_call_id=envelope.logical_call_id,
         )
+    return _as_model_response(stored)
+
+
+def _call_codex_completions(
+    *,
+    video_dir: Path,
+    stage: str,
+    stage_key: str,
+    prompt_version: str,
+    model: str,
+    payload: Mapping[str, Any],
+    timeout: tuple[float, float],
+    semantic_input: object | None,
+    ledger: PaidApiLedger | None,
+) -> DurableModelResponse:
+    from codex_cli_chat_bridge import send_codex_chat, validate_codex_request
+
+    validate_codex_request(payload, model)
+    durable = ledger or PaidApiLedger(
+        _provider_ledger_path(video_dir),
+        budget=_budget_policy(),
+        minimum_free_bytes=_minimum_free_bytes(),
+        emergency_reserve_bytes=_emergency_reserve_bytes(),
+    )
+    # This non-routable URI is a ledger namespace only; the sender launches a
+    # local CLI and never submits an HTTP request to it.
+    endpoint = "https://codex-cli.invalid/v1/chat/completions"
+    request_payload = dict(payload)
+    envelope = durable.prepare_call(
+        asset_id=task_identity(video_dir),
+        stage=stage,
+        stage_key=stage_key,
+        request_payload=request_payload,
+        semantic_input=request_payload if semantic_input is None else semantic_input,
+        model=model,
+        prompt_version=_provider_prompt_version(prompt_version),
+        knowledge_version=knowledge_version(video_dir),
+        endpoint=endpoint,
+        reserved_tokens=_reserved_tokens(request_payload),
+    )
+
+    def send(_endpoint: str, exact_body: bytes) -> Any:
+        return send_codex_chat(
+            payload=json.loads(exact_body),
+            model=model,
+            video_dir=video_dir,
+            logical_call_id=envelope.logical_call_id,
+            timeout_seconds=float(
+                os.environ.get("BLENDER_PIPELINE_CODEX_TIMEOUT", "900")
+            ),
+        )
+
+    def project(stored: StoredResponse) -> None:
+        project_durable_api_call(
+            video_dir,
+            logical_call_id=stored.logical_call_id,
+            stage=stage,
+            attempt=1,
+            endpoint=endpoint,
+            request_payload=request_payload,
+            wire_request_body=canonical_json_bytes(request_payload),
+            response_body=stored.content,
+            status_code=stored.status_code,
+            response_headers=stored.headers,
+            provider_request_id=stored.provider_request_id,
+        )
+
+    stored = durable.execute(envelope.logical_call_id, send, projector=project)
+    durable.consume(envelope.logical_call_id)
     return _as_model_response(stored)
 
 
@@ -743,7 +851,7 @@ def save_stage_checkpoint(
     ledger: PaidApiLedger | None = None,
 ) -> None:
     durable = ledger or PaidApiLedger(
-        ledger_path(),
+        _provider_ledger_path(video_dir),
         minimum_free_bytes=_minimum_free_bytes(),
         emergency_reserve_bytes=_emergency_reserve_bytes(),
     )
@@ -752,7 +860,7 @@ def save_stage_checkpoint(
         stage=stage,
         semantic_input=semantic_input,
         model=model,
-        prompt_version=prompt_version,
+        prompt_version=_provider_prompt_version(prompt_version),
         knowledge_version=knowledge_version(video_dir),
         output=output,
     )
@@ -768,7 +876,7 @@ def load_stage_checkpoint(
     ledger: PaidApiLedger | None = None,
 ) -> bytes | None:
     durable = ledger or PaidApiLedger(
-        ledger_path(),
+        _provider_ledger_path(video_dir),
         minimum_free_bytes=_minimum_free_bytes(),
         emergency_reserve_bytes=_emergency_reserve_bytes(),
     )
@@ -777,7 +885,7 @@ def load_stage_checkpoint(
         stage=stage,
         semantic_input=semantic_input,
         model=model,
-        prompt_version=prompt_version,
+        prompt_version=_provider_prompt_version(prompt_version),
         knowledge_version=knowledge_version(video_dir),
     )
     return checkpoint.output if checkpoint is not None else None

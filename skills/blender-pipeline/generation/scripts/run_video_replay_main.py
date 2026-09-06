@@ -22,10 +22,7 @@ from video_replay_delivery_contract import complete_six_view_delivery
 PROJECT = PROJECT_ROOT
 SCRIPTS = SCRIPT_ROOT
 TUTORIAL_EXTRACTOR = (
-    SCRIPTS.parents[1]
-    / "tutorial-extraction"
-    / "scripts"
-    / "extract_video_tutorial.py"
+    SCRIPTS.parents[1] / "tutorial-extraction" / "scripts" / "extract_video_tutorial.py"
 )
 DEFAULT_SECRET = Path(
     os.environ.get("BLENDER_PIPELINE_API_KEY_FILE", str(SECRET_ROOT / "model_api_key"))
@@ -317,12 +314,21 @@ IMAGE_RE = re.compile(r"!\[[^\]]*\]\(([^)\n]+)\)")
 
 def tutorial_visual_text_status(video_dir: Path) -> dict:
     manifest = load_json(video_dir / "tutorial_manifest.json")
-    if manifest.get("schema") == "video2blender-visual-tutorial.v1":
+    canonical_validators = {
+        "video2blender-visual-tutorial.v1": TUTORIAL_EXTRACTOR.parent
+        / "visual_tutorial_pipeline.py",
+        "video2blender-legacy-rich-tutorial.v1": TUTORIAL_EXTRACTOR.parent
+        / "legacy_rich_tutorial_pipeline.py",
+        "video2blender-provided-tutorial.v1": SCRIPTS.parent.parent
+        / "scripts/provided_tutorial.py",
+    }
+    if manifest.get("schema") in canonical_validators:
         # The visual skill validates complete learner prose and relative images;
         # legacy harness headings are not part of that document format.
         import importlib.util
-        module_path = TUTORIAL_EXTRACTOR.parent / "visual_tutorial_pipeline.py"
-        spec = importlib.util.spec_from_file_location("visual_tutorial_pipeline", module_path)
+
+        module_path = canonical_validators[manifest["schema"]]
+        spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
         module = importlib.util.module_from_spec(spec)
         sys.path.insert(0, str(module_path.parent))
         try:
@@ -330,11 +336,16 @@ def tutorial_visual_text_status(video_dir: Path) -> dict:
             issues = module.validate_workspace(video_dir)
         finally:
             sys.path.pop(0)
-        review = {"status": "needs_fix" if issues else "pass", "format": manifest["schema"],
-                  "issues": issues, "step_count": manifest.get("counts", {}).get("steps", 0),
-                  "required": REQUIRE_VISUAL_TEXT_CONTRACT}
+        review = {
+            "status": "needs_fix" if issues else "pass",
+            "format": manifest["schema"],
+            "issues": issues,
+            "step_count": manifest.get("counts", {}).get("steps", 0),
+            "required": REQUIRE_VISUAL_TEXT_CONTRACT,
+        }
         (video_dir / "tutorial_visual_text_review.json").write_text(
-            json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
+            json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return review
     tutorial_path = video_dir / "tutorial_path_refs.md"
     if not tutorial_path.exists():
@@ -511,6 +522,10 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
             args.tutorial_profile,
             "--model",
             args.tutorial_model,
+            "--provider",
+            getattr(args, "tutorial_provider", "api"),
+            "--tutorial-method",
+            getattr(args, "tutorial_method", "visual"),
             "--source-url",
             str(info.get("webpage_url") or info.get("original_url") or ""),
             "--window-budget",
@@ -524,7 +539,9 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
             video_dir / "transcripts" / "segments.jsonl",
         ]
         bvid = str(info.get("bvid") or info.get("id") or "").strip()
-        for raw_root in os.environ.get("BLENDER_TRANSCRIPT_ROOTS", "").split(os.pathsep):
+        for raw_root in os.environ.get("BLENDER_TRANSCRIPT_ROOTS", "").split(
+            os.pathsep
+        ):
             if raw_root.strip() and bvid:
                 root = Path(raw_root).expanduser()
                 transcript_candidates.extend(
@@ -539,7 +556,10 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
         )
         if transcript_path is not None:
             command.extend(["--transcript", str(transcript_path)])
-        learner_assets = [*info.get("tutorial_input_assets", []), *getattr(args, "tutorial_input_asset", [])]
+        learner_assets = [
+            *info.get("tutorial_input_assets", []),
+            *getattr(args, "tutorial_input_asset", []),
+        ]
         for asset in dict.fromkeys(map(str, learner_assets)):
             command.extend(["--input-asset", str(asset)])
         if getattr(args, "tutorial_fallback_reason", ""):
@@ -559,7 +579,12 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
     if source_md != path_refs:
         shutil.copy2(source_md, path_refs)
     canonical_manifest = load_json(video_dir / "tutorial_manifest.json")
-    if canonical_manifest.get("schema") not in {"video2blender-tutorial-manifest.v2", "video2blender-visual-tutorial.v1"}:
+    if canonical_manifest.get("schema") not in {
+        "video2blender-tutorial-manifest.v2",
+        "video2blender-visual-tutorial.v1",
+        "video2blender-legacy-rich-tutorial.v1",
+        "video2blender-provided-tutorial.v1",
+    }:
         run(
             [
                 sys.executable,
@@ -580,8 +605,12 @@ def ensure_tutorial(video_dir: Path, args: argparse.Namespace) -> None:
     steps_verified = video_dir / "steps_verified.json"
     if steps_rich.exists() and (
         not steps_verified.exists()
-        or canonical_manifest.get("schema") not in {
-            "video2blender-tutorial-manifest.v2", "video2blender-visual-tutorial.v1"
+        or canonical_manifest.get("schema")
+        not in {
+            "video2blender-tutorial-manifest.v2",
+            "video2blender-visual-tutorial.v1",
+            "video2blender-legacy-rich-tutorial.v1",
+            "video2blender-provided-tutorial.v1",
         }
     ):
         shutil.copy2(steps_rich, steps_verified)
@@ -1217,8 +1246,9 @@ def validate_forced_tutorial_runtime(args: argparse.Namespace) -> None:
         return
     if args.max_windows < 1:
         raise RuntimeError("--force-tutorial requires a positive --max-windows")
+    provider = getattr(args, "tutorial_provider", "api")
     parsed = urllib.parse.urlparse(DEFAULT_ENDPOINT)
-    if (
+    if provider == "api" and (
         parsed.scheme != "https"
         or not parsed.netloc
         or parsed.username
@@ -1233,11 +1263,15 @@ def validate_forced_tutorial_runtime(args: argparse.Namespace) -> None:
             "forced tutorial extraction requires gpt-5.6-sol, with gpt-5.5 "
             "allowed only as the explicit fallback"
         )
-    if (args.tutorial_model == "gpt-5.5") != bool(getattr(args, "tutorial_fallback_reason", "").strip()):
+    if (args.tutorial_model == "gpt-5.5") != bool(
+        getattr(args, "tutorial_fallback_reason", "").strip()
+    ):
         raise RuntimeError(
             "gpt-5.5 extraction requires --tutorial-fallback-reason; omit it for gpt-5.6-sol"
         )
-    if not DEFAULT_SECRET.is_file() or DEFAULT_SECRET.stat().st_mode & 0o077:
+    if provider == "api" and (
+        not DEFAULT_SECRET.is_file() or DEFAULT_SECRET.stat().st_mode & 0o077
+    ):
         raise RuntimeError(
             "forced tutorial extraction requires BLENDER_PIPELINE_API_KEY_FILE "
             "to point to an owner-only regular file"
@@ -1249,7 +1283,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--video-dir", type=Path, required=True)
     parser.add_argument("--force-tutorial", action="store_true")
-    parser.add_argument("--tutorial-input-asset", type=Path, action="append", default=[])
+    parser.add_argument(
+        "--tutorial-method", choices=("visual", "legacy-rich"), default="visual"
+    )
+    parser.add_argument(
+        "--tutorial-provider", choices=("api", "codex-cli"), default="api"
+    )
+    parser.add_argument(
+        "--tutorial-input-asset", type=Path, action="append", default=[]
+    )
     parser.add_argument("--tutorial-fallback-reason", default="")
     parser.add_argument(
         "--tutorial-profile",
@@ -1393,7 +1435,9 @@ def main() -> int:
                 status, {"status": status, "pipeline_review": review}
             )
             ACTIVE_TRAJECTORY.export_derived()
-            if (video_dir / "asset.blend").is_file():
+            if (video_dir / "asset.blend").is_file() and os.environ.get(
+                "VIDEO2BLENDER_KEEP_TRACE_IN_PLACE"
+            ) != "1":
                 ACTIVE_TRAJECTORY.publish_to(video_dir / "agent_trace")
         log(f"done: {video_dir}")
         return 0
@@ -1406,7 +1450,9 @@ def main() -> int:
                     "error": {"type": type(exc).__name__, "message": str(exc)},
                 },
             )
-            ACTIVE_TRAJECTORY.export_derived()
+            # Formatting an interrupted trace must not mask the original
+            # provider/runtime error or authorize an expensive rerun.
+            ACTIVE_TRAJECTORY.try_export_derived()
         raise
     finally:
         ACTIVE_TRAJECTORY = None

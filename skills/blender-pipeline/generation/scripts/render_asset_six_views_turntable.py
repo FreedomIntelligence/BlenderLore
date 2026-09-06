@@ -855,6 +855,89 @@ def expected_gpu_uuid() -> str:
     return value.lower()
 
 
+def render_device_policy() -> str:
+    policy = (
+        os.environ.get("BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict")
+        .strip()
+        .lower()
+    )
+    if policy not in {"strict", "local"}:
+        raise RuntimeError(f"unsupported render device policy: {policy}")
+    return policy
+
+
+def configure_local_cycles(scene) -> dict:
+    """Explicit local CPU or available accelerator; never invent GPU proof."""
+
+    backend = os.environ.get("VIDEO2BLENDER_CYCLES_BACKEND", "CPU").strip().upper()
+    if backend == "CPU":
+        scene.cycles.device = "CPU"
+    else:
+        if backend not in {"CUDA", "OPTIX", "METAL", "HIP", "ONEAPI"}:
+            raise RuntimeError(f"unsupported local Cycles backend: {backend}")
+        addon = bpy.context.preferences.addons.get("cycles")
+        if addon is None:
+            raise RuntimeError("Cycles addon is unavailable")
+        prefs = addon.preferences
+        prefs.compute_device_type = backend
+        prefs.get_devices()
+        devices = list(prefs.devices)
+        selected = [device for device in devices if str(device.type).upper() == backend]
+        if not selected:
+            raise RuntimeError(
+                f"requested local Cycles backend has no devices: {backend}"
+            )
+        for device in devices:
+            device.use = device in selected
+        scene.cycles.device = "GPU"
+    return local_render_device_evidence(scene)
+
+
+def local_render_device_evidence(scene) -> dict:
+    engine = str(scene.render.engine)
+    evidence = {
+        "render_device_policy": "local",
+        "device_evidence": "blender_runtime_configuration_not_exact_gpu_attestation",
+        "render_engine": engine,
+        "render_device": "renderer_managed",
+        "cycles_backend": "",
+        "gpu_process_attested": False,
+        "observed_gpu_uuid": "",
+        "cycles_cpu_fallback_allowed": False,
+        "devices": [],
+    }
+    if engine == "CYCLES":
+        evidence["render_device"] = str(scene.cycles.device)
+        if str(scene.cycles.device) == "CPU":
+            evidence["cycles_backend"] = "CPU"
+            evidence["devices"] = [{"type": "CPU", "use": True}]
+        else:
+            addon = bpy.context.preferences.addons.get("cycles")
+            prefs = addon.preferences if addon is not None else None
+            evidence["cycles_backend"] = str(getattr(prefs, "compute_device_type", ""))
+            evidence["devices"] = [
+                {
+                    "name": str(device.name),
+                    "type": str(device.type),
+                    "use": bool(device.use),
+                }
+                for device in getattr(prefs, "devices", [])
+                if device.use
+            ]
+    else:
+        try:
+            import gpu
+
+            evidence["graphics_runtime"] = {
+                "backend": str(gpu.platform.backend_type_get()),
+                "renderer": str(gpu.platform.renderer_get()),
+                "vendor": str(gpu.platform.vendor_get()),
+            }
+        except (ImportError, AttributeError, RuntimeError):
+            evidence["graphics_runtime"] = {"status": "unavailable"}
+    return evidence
+
+
 def current_process_gpu_uuids(
     *, attempts: int = 6, retry_seconds: float = 0.25
 ) -> list[str]:
@@ -931,6 +1014,8 @@ def current_process_gpu_uuids(
 
 
 def attest_current_process_gpu() -> str:
+    if render_device_policy() == "local":
+        return ""
     expected = expected_gpu_uuid()
     marker = os.environ.get("VIDEO2BLENDER_GPU_PROCESS_ATTESTED", "").strip()
     marker_uuid = (
@@ -1108,7 +1193,36 @@ def disable_scene_compositing_if_requested(scene) -> bool:
 
 
 def set_render_engine(scene) -> str:
-    global _POSTPROCESS_ENGINE, _POSTPROCESS_ENGINE_POLICY
+    global _POSTPROCESS_ENGINE, _POSTPROCESS_ENGINE_POLICY, _POSTPROCESS_CYCLES_BACKEND
+    if render_device_policy() == "local":
+        requested = _POSTPROCESS_ENGINE or (
+            str(scene.render.engine)
+            if preserve_source_render_settings()
+            else os.environ.get(
+                "VIDEO2BLENDER_POSTPROCESS_ENGINE",
+                os.environ.get("VIDEO2BLENDER_RENDER_ENGINE", "EEVEE"),
+            )
+        )
+        requested = requested.strip().upper()
+        if requested == "CYCLES":
+            scene.render.engine = "CYCLES"
+            evidence = configure_local_cycles(scene)
+            _POSTPROCESS_CYCLES_BACKEND = evidence["cycles_backend"]
+        elif requested in {"BLENDER_EEVEE_NEXT", "BLENDER_EEVEE", "EEVEE"}:
+            try:
+                scene.render.engine = (
+                    "BLENDER_EEVEE"
+                    if requested == "BLENDER_EEVEE"
+                    else "BLENDER_EEVEE_NEXT"
+                )
+            except (TypeError, ValueError):
+                scene.render.engine = "BLENDER_EEVEE"
+            _POSTPROCESS_CYCLES_BACKEND = ""
+        else:
+            raise RuntimeError(f"unsupported local render engine: {requested}")
+        _POSTPROCESS_ENGINE = str(scene.render.engine)
+        _POSTPROCESS_ENGINE_POLICY = "explicit_local_runtime_configuration"
+        return _POSTPROCESS_ENGINE
     if _POSTPROCESS_ENGINE:
         scene.render.engine = _POSTPROCESS_ENGINE
         # Cycles device state is scene-local and can be restored by an
@@ -1345,6 +1459,9 @@ def attest_production_render(render_path: Path) -> None:
             f"luma_range={visual['luma_range']}"
         )
     _POSTPROCESS_OUTPUT_ATTESTED = True
+    if render_device_policy() == "local":
+        _POSTPROCESS_GPU_ATTESTED = False
+        return
     if str(bpy.context.scene.render.engine).upper() == "CYCLES":
         # The injected monitor observes this Blender PID while Cycles owns its
         # CUDA context and only publishes the marker after a stable exact-UUID
@@ -1501,6 +1618,8 @@ def engine_probe_phase_parameters(backend: str = "CUDA") -> dict:
 
 
 def _run_controlled_engine_probe(engine: str, *, backend: str = "") -> dict:
+    if render_device_policy() != "strict":
+        raise RuntimeError("exact GPU probe requires strict render device policy")
     name = "VideoReplayEngineProbe_" + uuid_safe_name(engine + backend)
     scene = _probe_scene(name)
     window = bpy.context.window
@@ -1618,6 +1737,10 @@ def atomic_write_text(path: Path, value: str) -> None:
 
 
 def run_render_engine_probe(output: Path) -> dict:
+    if render_device_policy() == "local":
+        receipt = run_local_engine_probe()
+        atomic_write_json(output, receipt)
+        return receipt
     expected = expected_gpu_uuid()
     candidates: dict[str, dict]
     try:
@@ -1686,6 +1809,54 @@ def run_render_engine_probe(output: Path) -> dict:
     return receipt
 
 
+def run_local_engine_probe() -> dict:
+    """Render a bounded local probe without fabricating cluster attestation."""
+
+    scene = _probe_scene("VideoReplayLocalEngineProbe")
+    window = bpy.context.window
+    previous = window.scene if window is not None else None
+    try:
+        if window is not None:
+            window.scene = scene
+        engine = set_render_engine(scene)
+        scene.render.resolution_x = ENGINE_PROBE_VISUAL_RESOLUTION
+        scene.render.resolution_y = ENGINE_PROBE_VISUAL_RESOLUTION
+        if engine == "CYCLES":
+            scene.cycles.samples = ENGINE_PROBE_VISUAL_SAMPLES
+            if hasattr(scene.cycles, "time_limit"):
+                scene.cycles.time_limit = ENGINE_PROBE_VISUAL_TIME_LIMIT_SECONDS
+        with tempfile.TemporaryDirectory(
+            prefix="video2blender-local-probe-"
+        ) as directory:
+            output = Path(directory) / "visual_probe.png"
+            scene.render.image_settings.file_format = "PNG"
+            scene.render.filepath = str(output)
+            bpy.ops.render.render(scene=scene.name, write_still=True)
+            visual = render_result_visual_probe(controlled=True, render_path=output)
+        if visual.get("passed") is not True:
+            raise EngineProbeVisualError(visual, "")
+        evidence = local_render_device_evidence(scene)
+        return {
+            "schema": ENGINE_PROBE_SCHEMA,
+            **evidence,
+            "blender_version": str(bpy.app.version_string),
+            "expected_gpu_uuid": "",
+            "selected_engine": engine,
+            "selected_cycles_backend": evidence["cycles_backend"],
+            "candidates": {
+                engine: {
+                    "status": "locally_rendered",
+                    **evidence,
+                    "visual_probe": visual,
+                }
+            },
+        }
+    finally:
+        if window is not None and previous is not None:
+            window.scene = previous
+        bpy.data.scenes.remove(scene)
+
+
 def write_postprocess_render_receipt(out_dir: Path) -> None:
     if not _POSTPROCESS_ENGINE:
         raise RuntimeError(
@@ -1702,7 +1873,15 @@ def write_postprocess_render_receipt(out_dir: Path) -> None:
             "cycles_cpu_fallback_allowed": False,
             "gpu_process_attested": _POSTPROCESS_GPU_ATTESTED,
             "output_visual_attested": _POSTPROCESS_OUTPUT_ATTESTED,
-            "observed_gpu_uuid": expected_gpu_uuid(),
+            "observed_gpu_uuid": expected_gpu_uuid()
+            if render_device_policy() == "strict"
+            else "",
+            "render_device_policy": render_device_policy(),
+            **(
+                local_render_device_evidence(bpy.context.scene)
+                if render_device_policy() == "local"
+                else {}
+            ),
         },
     )
 
@@ -2576,7 +2755,15 @@ def render_dynamic_final_effect(
             "cycles_cpu_fallback_allowed": False,
             "gpu_process_attested": _POSTPROCESS_GPU_ATTESTED,
             "output_visual_attested": _POSTPROCESS_OUTPUT_ATTESTED,
-            "observed_gpu_uuid": expected_gpu_uuid(),
+            "observed_gpu_uuid": expected_gpu_uuid()
+            if render_device_policy() == "strict"
+            else "",
+            "render_device_policy": render_device_policy(),
+            **(
+                local_render_device_evidence(bpy.context.scene)
+                if render_device_policy() == "local"
+                else {}
+            ),
             "source_render_frames_saved": (
                 max(src_end - src_start + 1, plan.output_frame_count)
                 - plan.render_frame_count
@@ -3099,8 +3286,12 @@ def main() -> None:
             raise SystemExit("--engine-probe-output is required")
         receipt = run_render_engine_probe(Path(args.engine_probe_output))
         print(
-            "VIDEO_REPLAY_RENDER_ENGINE_ATTESTED "
-            f"engine={receipt['selected_engine']} "
+            (
+                "VIDEO_REPLAY_LOCAL_RENDER_VERIFIED "
+                if render_device_policy() == "local"
+                else "VIDEO_REPLAY_RENDER_ENGINE_ATTESTED "
+            )
+            + f"engine={receipt['selected_engine']} "
             f"backend={receipt['selected_cycles_backend'] or 'EEVEE_GPU'}"
         )
         return
@@ -3110,7 +3301,11 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     if args.gpu_attestation_preflight:
         try:
-            receipt = _run_controlled_engine_probe("CYCLES", backend="CUDA")
+            receipt = (
+                run_local_engine_probe()
+                if render_device_policy() == "local"
+                else _run_controlled_engine_probe("CYCLES", backend="CUDA")
+            )
             atomic_write_json(
                 out_dir / "gpu_attestation_preflight.json",
                 receipt,

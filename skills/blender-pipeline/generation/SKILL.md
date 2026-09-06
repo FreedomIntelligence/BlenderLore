@@ -39,20 +39,30 @@ new integrations must use the `BLENDER_PIPELINE_*` prefix.
 
 ## Replay verified tutorial evidence
 
+Ordinary users should start with repository-root `run_api.py` or `run_codex.py`.
+These prepare one isolated workspace, default to a local manifest-only knowledge
+index, and invoke the following maintained stages. `codex-cli` supplies both
+tutorial extraction and downstream code-generation/visual-review calls without
+an API key. The low-level commands below are for existing prepared workspaces.
+
 1. Put the source video and any transcript under one `video-dir`.
 2. Read the sibling [tutorial extraction skill](../tutorial-extraction/SKILL.md)
    and run its canonical `extract_video_tutorial.py` entrypoint. It performs
-   the `video-to-visual-tutorial` workflow: coarse contact sheets, focused
+   the selected workflow. `--tutorial-method visual` uses the
+   `video-to-visual-tutorial` workflow: coarse contact sheets, focused
    frame inspection, a compact evidence ledger, and a complete learner-facing
    procedure. Run the entrypoint with `--workspace-mode` to adapt that package
    to the existing replay files. Pass actual learner assets with repeatable
    `--input-asset`; do not classify the source video or acceptance preview as
-   a learner asset. The older generation
-   helpers are compatibility internals and must not be invoked as a second
-   extraction route. Run `build_pipeline_specs.py` after extraction.
+   a learner asset. `--tutorial-method legacy-rich` uses the original complete
+   60-second rich windows and base64 Markdown through the same canonical
+   entrypoint. Do not call those compatibility helpers as a competing public
+   launcher. The visual method is recommended for videos up to ten minutes.
+   Run `build_pipeline_specs.py` after extraction.
    `tutorial.md` and its derived `steps_verified.json` preserve the operational
    contract. The separate rubric is never supplied as task instructions.
-   Add `--render-tutorial-html` only when a separate human-readable
+   Add `--render-html` on the extractor (or `--render-tutorial-html` on the
+   low-level replay orchestrator) only when a separate human-readable
    HTML view is useful; it is rendered from the same complete Markdown and never
    replaces the operational files.
 3. Run `run_video_replay_main.py --video-dir <dir>`. The orchestrator invokes
@@ -95,7 +105,9 @@ Build a portable manifest with
 `build_blender_knowledge_index.py --manifest-only`; install the optional
 knowledge dependencies to build Qdrant. Retrieve with
 `retrieve_blender_knowledge.py --video-dir <dir>`. New replay observations are
-candidate knowledge only. Promote a rule only after its evidence is durable,
-its scope and Blender version are explicit, and an independent replay confirms
-the outcome. Production evidence is ingested only through an explicit,
+successful candidate knowledge only and remain outside active retrieval.
+Admission requires five independent human-reviewed accepted assets, a disjoint
+human-reviewed accepted holdout with zero regression, artifact hashes, and
+explicit route/family/Blender-version scope. Failed runs are diagnostics, never
+active lessons. Production evidence is ingested only through an explicit,
 bounded `--external-manifest`; the builder never crawls local run outputs.

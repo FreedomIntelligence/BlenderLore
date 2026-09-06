@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -74,15 +75,31 @@ def read_video_context(
         == "video_replay_type2"
     ):
         linked_audit = _load_first_json(video_dir, ["linked_asset_audit.json"])
-        if linked_audit:
-            linked_context, linked_match = rk.bili_linked_asset_knowledge_decision(
-                info, linked_audit
+        linked_source = info.get("linked_source") or {}
+        selected_hash = (
+            str(linked_source.get("selected_model_sha256") or "")
+            if isinstance(linked_source, dict)
+            else ""
+        )
+        if (
+            not re.fullmatch(r"[0-9a-f]{64}", selected_hash)
+            or not isinstance(linked_audit, dict)
+            or linked_audit.get("selected_model_sha256") != selected_hash
+            or linked_audit.get("status") != "pass"
+        ):
+            raise kc.KnowledgeManifestError(
+                "linked source knowledge requires a passing asset audit with the exact source.info.json SHA-256"
             )
-            result["linked_asset_knowledge"] = {
-                "role": "advisory_reproduction_evidence",
-                "authority": "video_tutorial_and_verified_steps_win",
-                **rk.decision_payload(linked_context, linked_match),
-            }
+        linked_context, linked_match = rk.bili_linked_asset_knowledge_decision(
+            info, linked_audit
+        )
+        result["linked_asset_knowledge"] = {
+            "schema": "blender-pipeline-linked-knowledge-projection.v1",
+            "selected_model_sha256": selected_hash,
+            "role": "advisory_reproduction_evidence",
+            "authority": "video_tutorial_and_verified_steps_win",
+            **rk.decision_payload(linked_context, linked_match),
+        }
     return result
 
 
@@ -101,6 +118,10 @@ def _load_first_json(video_dir: Path, names: list[str]) -> Any:
 def qdrant_search(
     query_text: str, family: str, feature: str, top_k: int
 ) -> list[dict[str, Any]]:
+    if kc.active_qdrant_path() is None:
+        raise FileNotFoundError(
+            "active generation uses deterministic manifest retrieval"
+        )
     from qdrant_client.models import FieldCondition, Filter, MatchAny
 
     model = kc.load_embedder()
@@ -120,7 +141,14 @@ def qdrant_search(
                 key="blender_feature", match=MatchAny(any=[feature, "other"])
             )
         )
-    qfilter = Filter(should=filters) if filters else None
+    qfilter = Filter(
+        must=[
+            FieldCondition(
+                key="review_status", match=MatchAny(any=["curated", "reviewed"])
+            )
+        ],
+        should=filters or None,
+    )
     try:
         result = client.query_points(
             collection_name=kc.COLLECTION_NAME,
@@ -141,6 +169,8 @@ def qdrant_search(
     rows: list[dict[str, Any]] = []
     for point in points:
         payload = dict(point.payload or {})
+        if not kc.active_knowledge_eligible(payload):
+            continue
         payload["score"] = float(getattr(point, "score", 0.0))
         rows.append(payload)
     rows.sort(key=lambda item: item.get("score", 0.0), reverse=True)
@@ -153,6 +183,8 @@ def manifest_fallback_search(
     words = {w.lower() for w in query_text.replace("_", " ").split() if len(w) >= 2}
     rows = []
     for item in kc.read_jsonl():
+        if not kc.active_knowledge_eligible(item):
+            continue
         text = f"{item.get('title', '')} {item.get('text', '')} {' '.join(item.get('tags') or [])}".lower()
         score = sum(1 for w in words if w in text)
         if family != "other" and item.get("asset_family") in {
@@ -226,6 +258,21 @@ def locally_compatible_reviewed(row: dict[str, Any], context: dict[str, Any]) ->
     )
 
 
+def admitted_scope_matches(row: dict[str, Any], context: dict[str, Any]) -> bool:
+    if not kc.active_knowledge_eligible(row):
+        return False
+    if row.get("review_status") == "curated":
+        return True
+    scope = row["extra"]["admission"]["scope"]
+    canonical = context.get("render_knowledge_context") or {}
+    actual = {
+        "route": canonical.get("route"),
+        "asset_family": context.get("inferred_asset_family"),
+        "blender_version": canonical.get("blender_version"),
+    }
+    return all(actual[key] and scope.get(key) == actual[key] for key in actual)
+
+
 def build_pack(
     video_dir: Path,
     tutorial: str = "",
@@ -237,9 +284,16 @@ def build_pack(
     feature = context["inferred_blender_feature"]
     status = "ok"
     error = ""
+    manifest_only = kc.active_qdrant_path() is None
     try:
-        results = qdrant_search(context["query_text"], family, feature, top_k)
-        retrieval_backend = "qdrant"
+        if manifest_only:
+            results = manifest_fallback_search(
+                context["query_text"], family, feature, top_k
+            )
+            retrieval_backend = "manifest_lexical"
+        else:
+            results = qdrant_search(context["query_text"], family, feature, top_k)
+            retrieval_backend = "qdrant"
     except Exception as exc:
         error = str(exc)[:1000]
         retrieval_backend = "manifest_fallback"
@@ -253,6 +307,10 @@ def build_pack(
                 :1000
             ]
         status = "fallback" if results else "unavailable"
+    # Defense in depth for older vector generations and alternate backends.
+    results = [row for row in results if admitted_scope_matches(row, context)]
+    if not results:
+        status = "unavailable"
     if results:
         top = results[0]
         top_family = top.get("asset_family")
@@ -276,10 +334,14 @@ def build_pack(
         "retrieval_backend": retrieval_backend,
         "collection": kc.COLLECTION_NAME,
         "active_manifest": str(kc.active_manifest_path()),
+        "knowledge_generation": str(kc._current_build_payload().get("build_id") or ""),
+        "query": context["query_text"],
         "context": {k: v for k, v in context.items() if k != "query_text"},
         "policy": {
             "video_specific_evidence_required": True,
-            "candidate_knowledge_usage": "advisory_only",
+            "admission": "curated_guidance_or_reviewed_success_only",
+            "curated_knowledge_usage": "scoped_guidance_not_success_artifact_proof",
+            "candidate_knowledge_usage": "excluded_from_active_retrieval",
             "reviewed_knowledge_usage": "hard_only_after_executable_canonical_recipe_and_approval",
             "deprecated_knowledge_usage": "never_use_as_guidance",
         },
@@ -305,6 +367,29 @@ def retrieve_for_pipeline(
     top_k: int = 10,
 ) -> dict[str, Any]:
     pack = build_pack(video_dir, tutorial=tutorial, qa=qa, top_k=top_k)
+    linked = pack["context"].get("linked_asset_knowledge")
+    if linked:
+        linked_path = video_dir / "linked_asset_knowledge.json"
+        if linked_path.exists() or linked_path.is_symlink():
+            try:
+                existing = json.loads(linked_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise kc.KnowledgeManifestError(
+                    "existing linked asset knowledge is unreadable; refusing to overwrite it"
+                ) from exc
+            if (
+                not isinstance(existing, dict)
+                or existing.get("selected_model_sha256")
+                != linked["selected_model_sha256"]
+                or existing.get("role") != linked["role"]
+            ):
+                raise kc.KnowledgeManifestError(
+                    "existing linked asset knowledge has a different source or role; refusing to overwrite it"
+                )
+            # A matching independent record may contain richer review data.
+            # Its identity suffices for the downstream check; leave it intact.
+        else:
+            kc.atomic_write_json(linked_path, linked)
     output = output_path or (video_dir / "knowledge_retrieval_pack.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8")

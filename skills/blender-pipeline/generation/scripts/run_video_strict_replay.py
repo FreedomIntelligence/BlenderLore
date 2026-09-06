@@ -32,7 +32,7 @@ from video_replay_delivery_contract import (
 from video_replay_model_client import (
     call_chat_completions,
     load_stage_checkpoint,
-    read_paid_api_secret,
+    read_model_credential,
     save_stage_checkpoint,
 )
 
@@ -79,9 +79,19 @@ OBJECT_DECOMPOSITION_HINT = os.environ.get(
 QUALITY_PROFILE = (
     os.environ.get("BLENDER_PIPELINE_QUALITY_PROFILE", "draft").strip().lower()
 )
-CODEGEN_PROMPT_VERSION = "strict-replay-codegen-v4"
-VISUAL_REVIEW_PROMPT_VERSION = "strict-replay-visual-review-v3"
+CODEGEN_PROMPT_VERSION = "strict-replay-codegen-v6"
+VISUAL_REVIEW_PROMPT_VERSION = "strict-replay-visual-review-v4"
+SAFE_GENERATED_IMPORT_ROOTS = frozenset(
+    {"bmesh", "bpy", "colorsys", "math", "mathutils", "random"}
+)
 GENERATED_CODE_SAFETY_PROMPT = (
+    "- The complete allowed import list is: "
+    + ", ".join(sorted(SAFE_GENERATED_IMPORT_ROOTS))
+    + ". Do not import any other module, including json. The AST safety gate "
+    "rejects all other imports even when unused.\n"
+    "- For scene/object metadata, assign plain strings, numbers, or simple "
+    "lists directly to custom properties. Do not serialize metadata with "
+    "json.dumps or any other serialization module.\n"
     "- For animation, use ordinary keyframes, Actions/NLA, or shape-key "
     "keyframes. Do not create Python drivers, driver expressions, or call "
     "driver_add().\n"
@@ -151,6 +161,57 @@ def encode_image(path: Path, max_side: int = 768) -> str:
     buf = BytesIO()
     img.save(buf, "JPEG", quality=82, optimize=True)
     return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def supplied_image_manifest(video_dir: Path) -> list[dict[str, str]]:
+    """Validate explicit run-local image inputs before describing them to a model."""
+
+    manifest = load_json(video_dir / "input_assets.json")
+    entries = manifest.get("assets", []) if isinstance(manifest, dict) else manifest
+    if not isinstance(entries, list):
+        raise ValueError("input_assets.json must contain an assets list")
+    result = []
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("role") not in {
+            "preview",
+            "supporting",
+        }:
+            continue
+        path = Path(str(entry.get("path") or ""))
+        if path.suffix.lower() not in {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".bmp",
+            ".tif",
+            ".tiff",
+            ".hdr",
+            ".exr",
+        }:
+            continue
+        if not path.is_absolute():
+            raise ValueError("supplied image path must be an absolute staged path")
+        resolved = path.resolve(strict=True)
+        try:
+            resolved.relative_to(video_dir.resolve())
+        except ValueError as exc:
+            raise ValueError("supplied image must be staged inside video_dir") from exc
+        digest = sha256_file(resolved)
+        if digest != entry.get("sha256"):
+            raise ValueError("supplied image SHA-256 mismatch")
+        result.append(
+            {
+                "path": str(resolved),
+                "name": resolved.name,
+                "role": entry["role"],
+                "sha256": digest,
+                "blender_image_name": f"INPUT_{digest[:12]}_{resolved.name}"
+                if entry["role"] == "supporting"
+                else "",
+            }
+        )
+    return result
 
 
 def encode_data_url_as_jpeg(data_url: str, max_side: int = 960) -> str:
@@ -442,9 +503,6 @@ class GeneratedCodeSafetyError(ValueError):
     """The model-generated scene program crossed a deterministic safety gate."""
 
 
-SAFE_GENERATED_IMPORT_ROOTS = frozenset(
-    {"bmesh", "bpy", "colorsys", "math", "mathutils", "random"}
-)
 FORBIDDEN_GENERATED_NAMES = frozenset(
     {
         "__builtins__",
@@ -472,6 +530,7 @@ PROTECTED_WRAPPER_NAMES = frozenset(
         "_clear_scene",
         "_ensure_camera_lights_and_outputs",
         "_load_linked_source_if_configured",
+        "_load_supporting_images_if_configured",
         "_look_at",
         "_renderable_objects",
         "_write_linked_source_runtime_receipt",
@@ -522,6 +581,7 @@ FORBIDDEN_GENERATED_FINAL_NAMES = (
     | FORBIDDEN_BPY_OP_NAMESPACES
     | {"script", "text", "texts"}
 )
+SAFE_IMAGE_TEXTURE_EXTENSIONS = frozenset({"REPEAT", "EXTEND", "CLIP", "MIRROR"})
 
 
 def _generated_dotted_name(node: ast.AST) -> str:
@@ -543,6 +603,47 @@ def _protected_generated_name(name: str) -> bool:
 class _GeneratedCodeSafetyVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
         self.bpy_paths: dict[str, tuple[str, ...]] = {"bpy": ("bpy",)}
+        self.image_texture_names: set[str] = set()
+        self.safe_image_extension_writes: set[ast.Attribute] = set()
+
+    def image_texture_value(self, node: ast.AST) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.image_texture_names
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "new"
+        ):
+            return False
+        node_type = (
+            node.args[0]
+            if node.args
+            else next(
+                (keyword.value for keyword in node.keywords if keyword.arg == "type"),
+                None,
+            )
+        )
+        return (
+            isinstance(node_type, ast.Constant)
+            and node_type.value == "ShaderNodeTexImage"
+        )
+
+    def allow_image_extension_write(
+        self, target: ast.AST, value: ast.AST | None
+    ) -> None:
+        # `extension` is also a privileged bpy.ops namespace.  Exempt only a
+        # literal enum write to a known image-texture node; never a read/call.
+        if (
+            isinstance(target, ast.Attribute)
+            and isinstance(target.ctx, ast.Store)
+            and target.attr == "extension"
+            and self.bpy_path(target) is None
+            and self.image_texture_value(target.value)
+            and isinstance(value, ast.Constant)
+            and isinstance(value.value, str)
+            and value.value in SAFE_IMAGE_TEXTURE_EXTENSIONS
+        ):
+            self.safe_image_extension_writes.add(target)
 
     def bpy_path(self, node: ast.AST) -> tuple[str, ...] | None:
         if isinstance(node, ast.Name):
@@ -569,6 +670,11 @@ class _GeneratedCodeSafetyVisitor(ast.NodeVisitor):
         return (
             "texts" in path
             or "script" in path
+            or (
+                len(path) >= 4
+                and path[1:3] in {("data", "images"), ("data", "libraries")}
+                and path[-1] == "load"
+            )
             or path[-1] in FORBIDDEN_BPY_FINAL_ATTRIBUTES
             or (
                 len(path) >= 3
@@ -638,7 +744,10 @@ class _GeneratedCodeSafetyVisitor(ast.NodeVisitor):
                 )
             )
             or ".environ" in f".{dotted}"
-            or normalized_attribute in FORBIDDEN_GENERATED_FINAL_NAMES
+            or (
+                normalized_attribute in FORBIDDEN_GENERATED_FINAL_NAMES
+                and node not in self.safe_image_extension_writes
+            )
             or "driver" in normalized_attribute
             or node.attr.startswith("_")
         ):
@@ -706,6 +815,14 @@ class _GeneratedCodeSafetyVisitor(ast.NodeVisitor):
         for target in node.targets:
             if isinstance(target, ast.Attribute) and target.attr == "expression":
                 self.fail(target, "scripted_driver_expression_forbidden")
+            self.allow_image_extension_write(target, node.value)
+        is_image_texture = self.image_texture_value(node.value)
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                if is_image_texture:
+                    self.image_texture_names.add(target.id)
+                else:
+                    self.image_texture_names.discard(target.id)
         path = self.bpy_path(node.value)
         if path is not None:
             for target in node.targets:
@@ -716,6 +833,12 @@ class _GeneratedCodeSafetyVisitor(ast.NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         if isinstance(node.target, ast.Attribute) and node.target.attr == "expression":
             self.fail(node.target, "scripted_driver_expression_forbidden")
+        self.allow_image_extension_write(node.target, node.value)
+        if isinstance(node.target, ast.Name):
+            if node.value is not None and self.image_texture_value(node.value):
+                self.image_texture_names.add(node.target.id)
+            else:
+                self.image_texture_names.discard(node.target.id)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
@@ -934,6 +1057,7 @@ def request_code(video_dir: Path, out_dir: Path, repair_context: str = "") -> st
     linked_source = (
         info.get("linked_source") if isinstance(info.get("linked_source"), dict) else {}
     )
+    supplied_images = supplied_image_manifest(video_dir)
     final_reference_status = load_json(video_dir / "final_reference_status.json")
     motion_plan = load_json(video_dir / "motion_plan.json")
     material_spec = load_json(video_dir / "material_spec.json")
@@ -1003,7 +1127,7 @@ Texture/material detail constraints:
 - This tutorial contains material/node/texture/shader evidence. The final render must visibly show that material work on the asset surface.
 - Do not produce a smooth nearly uniform surface when the tutorial describes procedural texture, node texture, bump, roughness variation, color ramp, noise, wave, Voronoi, speckles, grain, or similar details.
 - If the tutorial is primarily about material nodes, prioritize the material appearance over adding unrelated geometry. The visible shader result should be recognizable from the final reference/evidence.
-- Use procedural nodes and sufficiently high contrast/scale so the rendered image visibly shows texture variation, not just hidden node complexity.
+- Preserve supplied image-texture mapping when demonstrated. Require procedural nodes only for demonstrated procedural work; do not invent noise to replace an available image. Judge contrast and variation against the source, not an arbitrary minimum.
 """.strip()
     animation_instruction = (
         "- This is a dynamic tutorial. build_scene() may create lightweight timeline keyframes, procedural motion helpers, or simulation-like animated objects, but must not render or save files. If useful, also define configure_final_effect_animation() to add keyframes after all objects are created; the wrapper will call it before saving the blend."
@@ -1044,7 +1168,7 @@ Type 2 linked-asset constraints:
 - Linked-source knowledge decision: {json.dumps(linked_asset_knowledge, ensure_ascii=False, indent=2)[:12000]}
 """.strip()
         if workload_kind == "video_replay_type2"
-        else "This is a pure video-tutorial reconstruction. No linked source asset is available."
+        else "This is a video-tutorial reconstruction without a linked geometry asset. Explicitly supplied supporting images, if any, are listed below."
     )
     text = f"""
 You are writing Blender Python for a strict video-to-asset replay batch.
@@ -1052,7 +1176,8 @@ You are writing Blender Python for a strict video-to-asset replay batch.
 Task:
 - Recreate the Blender asset described by tutorial.md, then code_tutorial.md, then steps_verified.json.
 - Write procedural Blender Python only.
-- Do NOT require any external input beyond the already verified linked source supplied by the wrapper for Type 2; Type 1 must remain entirely video-derived.
+- Do NOT require any external input beyond the verified linked source and supporting images explicitly supplied below. Without a linked geometry asset, create geometry from the tutorial; supplied textures may be used without inventing a missing model.
+- The trusted wrapper preloads and packs supporting images in bpy.data.images under each manifest entry's blender_image_name before build_scene(). Use these datablocks directly; never open files or load images in generated code. Preview-role images are context only, not textures to project onto substitute geometry.
 - Do NOT use placeholder boxes if the target has recognizable shapes.
 - Do NOT save files, render files, or write paths. The wrapper will save asset.blend, render.png, six views, and final video.
 - Define build_scene(). For dynamic tutorials, you may additionally define configure_final_effect_animation().
@@ -1111,6 +1236,9 @@ Task:
 {texture_detail_instruction}
 {linked_asset_instruction}
 
+Explicitly supplied and hash-checked input images:
+{json.dumps(supplied_images, ensure_ascii=False, indent=2)}
+
 Video title: {info.get("title") or video_dir.name}
 Video URL: {info.get("webpage_url") or info.get("original_url") or ""}
 Target visual hint: {TARGET_VISUAL_HINT or final_reference_instruction}
@@ -1130,7 +1258,7 @@ blender_version_plan.json:
 knowledge_retrieval_pack.json:
 {json.dumps(knowledge_retrieval_pack, ensure_ascii=False, indent=2)[:16000]}
 
-Knowledge policy: candidate hits are advisory only. Deprecated hits must be ignored. Only the pack's compatible reviewed hard constraints may constrain implementation, and neither linked-asset knowledge nor retrieved recipes may override tutorial.md or verified steps.
+Knowledge policy: active retrieval contains only curated guidance and admitted, independently reviewed successful knowledge. Curated guidance is reusable engineering advice, not proof that a particular asset has already been reproduced. Apply only scope- and version-compatible reviewed hard constraints. Ignore any candidate, failed, unreviewed, or deprecated record if present in a legacy pack. Neither linked-asset knowledge nor retrieved recipes may override tutorial.md or verified steps.
 
 workflow_manifest.json:
 {json.dumps(workflow_manifest, ensure_ascii=False, indent=2)}
@@ -1153,6 +1281,23 @@ steps_verified.json:
 {steps_manifest}
 """.strip()
     content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+    for index, entry in enumerate(supplied_images, 1):
+        content.append(
+            {
+                "type": "text",
+                "text": f"SUPPLIED_INPUT_{index:03d}; role={entry['role']}; name={entry['name']}",
+            }
+        )
+        if Path(entry["path"]).suffix.lower() not in {".hdr", ".exr"}:
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/jpeg;base64,"
+                        + encode_image(Path(entry["path"]))
+                    },
+                }
+            )
     image_sources = []
     if ref_allowed:
         image_sources.append(
@@ -1332,7 +1477,7 @@ steps_verified.json:
             stage_key="codegen",
             prompt_version=CODEGEN_PROMPT_VERSION,
             endpoint=ENDPOINT,
-            api_key=read_paid_api_secret(SECRET),
+            api_key=read_model_credential(SECRET),
             model=MODEL,
             payload=payload,
             timeout=timeout,
@@ -1472,7 +1617,7 @@ Pass only if:
 - background/support objects do not hide or replace the main subject.
 - for character targets, reject if the rendered result changes the target body plan/species/category, drops visible clothing/armor/gear/accessories, loses the recognizable face/eyes/horns/ears/tail/limbs, or substitutes a different generic character.
 - for game/rigged character targets, reject added display bases, floor plates, backpacks, boards, oversized props, or unrelated scenery when those objects are absent from the target.
-- if material_spec.texture_detail_required is true, the rendered surface must visibly show the procedural/material detail; a smooth nearly uniform surface is a failure even if code may contain shader nodes.
+- if material_spec.texture_detail_required is true, the rendered surface must show the spatial material detail demonstrated by the source, whether from image textures or procedural nodes. Do not demand variation from an explicitly uniform input image or constant BSDF parameter.
 - if the target is an interior/room/environment image, reject closed roofed box, front railing/grid, black-void backdrop, or dollhouse-cutaway compositions when the target is a frontal/open room view with visible windows/backdrop/furniture.
 
 {dynamic_requirements}
@@ -1550,7 +1695,7 @@ Return concise JSON only:
             stage_key="visual_review",
             prompt_version=VISUAL_REVIEW_PROMPT_VERSION,
             endpoint=ENDPOINT,
-            api_key=read_paid_api_secret(SECRET),
+            api_key=read_model_credential(SECRET),
             model=MODEL,
             payload=payload,
             timeout=timeout,
@@ -1772,11 +1917,19 @@ def _load_linked_source_if_configured():
     config = json.loads(config_path.read_text(encoding="utf-8"))
     relative = config.get("selected_model_relative", "")
     source = (OUTPUT_DIR.parent / "linked_source" / relative).resolve()
+    try:
+        source.relative_to((OUTPUT_DIR.parent / "linked_source").resolve())
+    except ValueError:
+        raise RuntimeError("linked source escaped its staged directory")
     if not source.is_file():
         raise RuntimeError("configured linked source model is missing")
+    import hashlib
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    if digest != config.get("selected_model_sha256"):
+        raise RuntimeError("linked source model hash mismatch")
     suffix = source.suffix.lower()
     if suffix == ".blend":
-        bpy.ops.wm.open_mainfile(filepath=str(source))
+        bpy.ops.wm.open_mainfile(filepath=str(source), use_scripts=False)
     elif suffix == ".fbx":
         bpy.ops.import_scene.fbx(filepath=str(source))
     elif suffix == ".obj":
@@ -1788,10 +1941,6 @@ def _load_linked_source_if_configured():
         bpy.ops.import_scene.gltf(filepath=str(source))
     else:
         raise RuntimeError("unsupported linked source model format")
-    import hashlib
-    digest = hashlib.sha256(source.read_bytes()).hexdigest()
-    if digest != config.get("selected_model_sha256"):
-        raise RuntimeError("linked source model hash mismatch")
     scene = bpy.context.scene
     scene["video2blender_type2_source_sha256"] = digest
     source_objects = list(scene.objects)
@@ -1814,6 +1963,36 @@ def _load_linked_source_if_configured():
         "source_fingerprints": [(obj, fingerprint(obj)) for obj in source_objects],
         "fingerprint": fingerprint,
     }
+
+def _load_supporting_images_if_configured():
+    import hashlib
+    import json
+    config_path = OUTPUT_DIR.parent / "input_assets.json"
+    if not config_path.is_file():
+        return
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    entries = config.get("assets", []) if isinstance(config, dict) else config
+    if not isinstance(entries, list):
+        raise RuntimeError("input_assets.json must contain an assets list")
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("role") != "supporting":
+            continue
+        source = Path(str(entry.get("path") or ""))
+        if source.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".hdr", ".exr"}:
+            continue
+        if not source.is_absolute():
+            raise RuntimeError("supporting image path must be absolute")
+        source = source.resolve()
+        try:
+            source.relative_to(OUTPUT_DIR.parent.resolve())
+        except ValueError:
+            raise RuntimeError("supporting image escaped its staged directory")
+        digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        if digest != entry.get("sha256"):
+            raise RuntimeError("supporting image SHA-256 mismatch")
+        image = bpy.data.images.load(str(source), check_existing=False)
+        image.name = "INPUT_" + digest[:12] + "_" + source.name
+        image.pack()
 
 def _write_linked_source_runtime_receipt(linked_state):
     if not linked_state:
@@ -1907,6 +2086,8 @@ def _look_at(obj, target):
 
 def _attest_exact_gpu_process():
     import os as _os
+    if _video2blender_device_policy() == "local":
+        return ""
     expected = _os.environ.get("TOTAL_ASSET_EXPECTED_GPU_UUID", "").strip().lower()
     if not expected.startswith("gpu-"):
         raise RuntimeError(
@@ -1926,6 +2107,68 @@ def _attest_exact_gpu_process():
             f"process_monitor_uuid={_marker_uuid or 'missing'}"
         )
     return expected
+
+def _video2blender_device_policy():
+    policy = __import__("os").environ.get("BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict").strip().lower()
+    if policy not in {"strict", "local"}:
+        raise RuntimeError("unsupported render device policy: " + policy)
+    return policy
+
+def _video2blender_local_cycles(scene):
+    backend = __import__("os").environ.get("VIDEO2BLENDER_CYCLES_BACKEND", "CPU").strip().upper()
+    if backend == "CPU":
+        scene.cycles.device = "CPU"
+        return
+    if backend not in {"CUDA", "OPTIX", "METAL", "HIP", "ONEAPI"}:
+        raise RuntimeError("unsupported local Cycles backend: " + backend)
+    addon = bpy.context.preferences.addons.get("cycles")
+    if addon is None:
+        raise RuntimeError("Cycles addon is unavailable")
+    prefs = addon.preferences
+    prefs.compute_device_type = backend
+    prefs.get_devices()
+    devices = list(prefs.devices)
+    selected = [device for device in devices if str(device.type).upper() == backend]
+    if not selected:
+        raise RuntimeError("requested local Cycles backend has no devices: " + backend)
+    for device in devices:
+        device.use = device in selected
+    scene.cycles.device = "GPU"
+
+def _video2blender_local_device_evidence(scene):
+    evidence = {
+        "render_device_policy": "local",
+        "device_evidence": "blender_runtime_configuration_not_exact_gpu_attestation",
+        "render_device": "renderer_managed",
+        "cycles_backend": "",
+        "gpu_process_attested": False,
+        "observed_gpu_uuid": "",
+        "devices": [],
+    }
+    if scene.render.engine == "CYCLES":
+        evidence["render_device"] = str(scene.cycles.device)
+        if str(scene.cycles.device) == "CPU":
+            evidence["cycles_backend"] = "CPU"
+            evidence["devices"] = [{"type": "CPU", "use": True}]
+        else:
+            addon = bpy.context.preferences.addons.get("cycles")
+            prefs = addon.preferences if addon is not None else None
+            evidence["cycles_backend"] = str(getattr(prefs, "compute_device_type", ""))
+            evidence["devices"] = [
+                {"name": str(device.name), "type": str(device.type), "use": bool(device.use)}
+                for device in getattr(prefs, "devices", []) if device.use
+            ]
+    else:
+        try:
+            import gpu
+            evidence["graphics_runtime"] = {
+                "backend": str(gpu.platform.backend_type_get()),
+                "renderer": str(gpu.platform.renderer_get()),
+                "vendor": str(gpu.platform.vendor_get()),
+            }
+        except (ImportError, AttributeError, RuntimeError):
+            evidence["graphics_runtime"] = {"status": "unavailable"}
+    return evidence
 
 def _assert_render_result_not_black(_render_path=None):
     # Blender 5.1 background renders from a non-main scene can leave the
@@ -2029,7 +2272,12 @@ def _ensure_camera_lights_and_outputs():
     _render_default_samples = "160" if __import__("os").environ.get("BLENDER_PIPELINE_QUALITY_PROFILE", "draft").lower() == "final" else "48"
     _render_samples = int(__import__("os").environ.get("BLENDER_PIPELINE_RENDER_SAMPLES", _render_default_samples))
     _render_engine = __import__("os").environ.get("VIDEO2BLENDER_RENDER_ENGINE", "EEVEE").strip().upper()
-    if _render_engine == "CYCLES":
+    if _render_engine == "CYCLES" and _video2blender_device_policy() == "local":
+        scene.render.engine = "CYCLES"
+        scene.cycles.samples = _render_samples
+        scene.cycles.use_denoising = True
+        _video2blender_local_cycles(scene)
+    elif _render_engine == "CYCLES":
         if __import__("os").environ.get("VIDEO2BLENDER_CYCLES_GPU_VERIFIED", "0") != "1":
             raise RuntimeError(
                 "VIDEO_REPLAY_RENDER_ENGINE_ATTESTATION_FAILED "
@@ -2190,6 +2438,8 @@ def _ensure_camera_lights_and_outputs():
         "gpu_process_attested": True,
         "observed_gpu_uuid": _observed_gpu_uuid,
         "visual_probe": {"passed": True, **_preview_visual},
+        "render_device_policy": _video2blender_device_policy(),
+        **(_video2blender_local_device_evidence(scene) if _video2blender_device_policy() == "local" else {}),
     }
     _generation_receipt_path = OUTPUT_DIR / "generation_render_receipt.json"
     _generation_receipt_tmp = OUTPUT_DIR / ".generation_render_receipt.json.tmp"
@@ -2334,6 +2584,7 @@ WRAPPER_SUFFIX = r"""
 if __name__ == "__main__":
     _clear_scene()
     _linked_source_state = _load_linked_source_if_configured()
+    _load_supporting_images_if_configured()
     _video2blender_build_scene()
     if _video2blender_configure_final_effect_animation is not None:
         _video2blender_configure_final_effect_animation()
@@ -2418,6 +2669,15 @@ def review_generated_material_code(video_dir: Path, generated: str) -> tuple[boo
             "Generated code defines no visible material assignment; add named materials with base colors/shaders.",
         )
     if material_spec.get("texture_detail_required"):
+        # Image-based detail is a valid workflow, not a missing procedural
+        # shader. This is a code precheck; the actual render still must pass
+        # the unchanged artifact and visual-comparison gates.
+        mapped_image = (
+            "shadernodeteximage" in text_no_comments
+            and re.search(r"\.image\s*=", text_no_comments) is not None
+            and "links.new" in text_no_comments
+            and not material_spec.get("procedural_texture_required")
+        )
         texture_tokens = [
             "shadernodetexnoise",
             "shadernodetexvoronoi",
@@ -2432,11 +2692,11 @@ def review_generated_material_code(video_dir: Path, generated: str) -> tuple[boo
             "roughness",
         ]
         texture_hits = [token for token in texture_tokens if token in text]
-        if len(texture_hits) < 2:
+        if len(texture_hits) < 2 and not mapped_image:
             return (
                 False,
-                "Texture/material tutorial gate failed: generated code lacks enough procedural texture/shader detail. "
-                "Use visible noise/wave/voronoi/color ramp/bump/roughness variation so the final render is not smooth or uniform.",
+                "Texture/material tutorial gate failed: generated code lacks the demonstrated spatial material detail. "
+                "Use the supplied image texture and its node links, or the procedural pattern actually taught by the source; do not invent unrelated noise.",
             )
     if material_spec.get("subject_family") == "scene_environment":
         scene_blocking_tokens = [
@@ -2593,6 +2853,14 @@ def blender_replay_command(script: Path) -> list[str]:
 
     return [
         str(BLENDER),
+        *(
+            ["--disable-autoexec"]
+            if os.environ.get("BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict")
+            .strip()
+            .lower()
+            == "local"
+            else []
+        ),
         "--factory-startup",
         "--background",
         "--python",
@@ -2642,6 +2910,14 @@ def run_postprocess(out_dir: Path) -> int:
             proc = subprocess.run(
                 [
                     str(BLENDER),
+                    *(
+                        ["--disable-autoexec"]
+                        if env.get("BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict")
+                        .strip()
+                        .lower()
+                        == "local"
+                        else []
+                    ),
                     str(out_dir / "asset.blend"),
                     "--background",
                     "--python",
@@ -2843,7 +3119,9 @@ def fresh_reopen_asset(out_dir: Path) -> dict[str, Any]:
         raise RuntimeError("asset.blend is missing before fresh-reopen validation")
     asset_sha256 = sha256_file(asset)
     log_path = out_dir / "delivery_fresh_reopen.log"
-    with tempfile.TemporaryDirectory(prefix="video-replay-reopen-") as directory:
+    with tempfile.TemporaryDirectory(
+        prefix=".video-replay-reopen-", dir=out_dir
+    ) as directory:
         temporary = Path(directory)
         probe_script = temporary / "probe.py"
         probe_output = temporary / "probe.json"
@@ -2881,6 +3159,14 @@ output.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
         )
         command = [
             str(BLENDER),
+            *(
+                ["--disable-autoexec"]
+                if os.environ.get("BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict")
+                .strip()
+                .lower()
+                == "local"
+                else []
+            ),
             "--factory-startup",
             "--background",
             str(asset),
@@ -3129,6 +3415,16 @@ def process(video_dir: Path) -> dict[str, Any]:
                 clear_stale_postprocess_delivery(out_dir)
                 post_command = [
                     str(BLENDER),
+                    *(
+                        ["--disable-autoexec"]
+                        if os.environ.get(
+                            "BLENDER_PIPELINE_RENDER_DEVICE_POLICY", "strict"
+                        )
+                        .strip()
+                        .lower()
+                        == "local"
+                        else []
+                    ),
                     str(out_dir / "asset.blend"),
                     "--background",
                     "--python",

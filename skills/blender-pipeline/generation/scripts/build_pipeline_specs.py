@@ -196,18 +196,39 @@ def _positive_term_matches(text: str, term: str) -> bool:
     """Ignore explicit negations while retaining real material evidence."""
 
     for match in _term_pattern(term).finditer(text or ""):
-        prefix = (text or "")[max(0, match.start() - 28) : match.start()]
+        prefix = (text or "")[max(0, match.start() - 100) : match.start()]
+        # Negation belongs to its clause; "no X, but add Y" must retain Y.
+        prefix = re.split(
+            r"[。！？!?;；\n]|\b(?:but|however|instead)\b|但是|但|而是",
+            prefix,
+            flags=re.I,
+        )[-1]
         if re.search(
-            r"(?:未|没有|并无|不(?:要|需|会|是|包含|使用|设置)?|"
-            r"禁止|避免).{0,10}$",
+            r"(?:未|没有|并无|无需|无须|不(?:要|需|会|是|含|包含|使用|设置)|"
+            r"禁止|避免).{0,16}$|(?:无|不)\s*$",
             prefix,
             re.I,
         ):
             continue
         if re.search(
             r"(?:\bno|\bnot|\bwithout|\bnever|\bdo\s+not|"
-            r"\bdoes\s+not|\bdon't|\bdoesn't)(?:\s+\w+){0,4}\s*$",
+            r"\bdoes\s+not|\bdon't|\bdoesn't)(?:[\s,]+[\w'-]+){0,10}[\s,]*$|\bnon[-\s]$",
             prefix,
+            re.I,
+        ):
+            continue
+        suffix = (text or "")[match.end() : match.end() + 45]
+        if term.casefold() in {"metal", "metallic", "金属", "金属度"} and re.match(
+            r"(?:lic|度)?\s*(?:(?:is|to|为|设为|设置为)\s*|[:：=]\s*)?"
+            r"0(?:\.0+)?(?![\d.])",
+            suffix,
+            re.I,
+        ):
+            continue
+        if re.match(
+            r"\s*(?:(?:is|are|was|were)\s+(?:not\s+(?:needed|required|used|included)|"
+            r"absent|disabled)|(?:不是|不需要|无需|不存在|未使用|被禁用))",
+            suffix,
             re.I,
         ):
             continue
@@ -217,6 +238,34 @@ def _positive_term_matches(text: str, term: str) -> bool:
 
 def _positive_hits(text: str, terms: list[str]) -> list[str]:
     return sorted({term for term in terms if _positive_term_matches(text, term)})
+
+
+def _positive_motion_hits(text: str, terms: list[str]) -> list[str]:
+    """Match complete motion words, including common instructional inflections."""
+
+    aliases = {
+        "keyframe": ("keyframe", "keyframes", "key frame", "key frames"),
+        "animation": ("animation", "animations", "animate", "animated", "animating"),
+        "simulation": (
+            "simulation",
+            "simulations",
+            "simulate",
+            "simulated",
+            "simulating",
+        ),
+        "particle": ("particle", "particles"),
+        "rig": ("rig", "rigs", "rigged", "rigging"),
+    }
+    return sorted(
+        {
+            term
+            for term in terms
+            if any(
+                _positive_term_matches(text, alias)
+                for alias in aliases.get(term, (term,))
+            )
+        }
+    )
 
 
 def is_generic_multi_topic_course_title(title: str) -> bool:
@@ -733,10 +782,8 @@ def build_motion_plan(
     steps_text = json.dumps(steps or {}, ensure_ascii=False)[:50000]
     title_steps_haystack = "\n".join([title, steps_text]).lower()
     haystack = "\n".join([title, tutorial[:50000], steps_text]).lower()
-    hits = sorted({term for term in DYNAMIC_TERMS if term.lower() in haystack})
-    strong_hits = sorted(
-        {term for term in STRONG_DYNAMIC_TERMS if term.lower() in title_steps_haystack}
-    )
+    hits = _positive_motion_hits(haystack, DYNAMIC_TERMS)
+    strong_hits = _positive_motion_hits(title_steps_haystack, STRONG_DYNAMIC_TERMS)
     title_l = title.lower()
     inflation_motion_context = bool(
         re.search(
@@ -780,9 +827,7 @@ def build_motion_plan(
     )
     if cloth_is_only_material:
         strong_hits = [term for term in strong_hits if term not in {"布料", "cloth"}]
-    weak_strong_hits = sorted(
-        {term for term in STRONG_DYNAMIC_TERMS if term.lower() in haystack}
-    )
+    weak_strong_hits = _positive_motion_hits(haystack, STRONG_DYNAMIC_TERMS)
     if "膨胀" in weak_strong_hits and not inflation_motion_context:
         weak_strong_hits = [term for term in weak_strong_hits if term != "膨胀"]
     # OCR and frame summaries can contain noisy words such as "smoke" or "fluid".
@@ -884,9 +929,9 @@ def build_motion_plan(
         presentation_profile = "stylized_showcase"
     elif any(term in title_l for term in detail_terms):
         presentation_profile = "detail_showcase"
-    elif any(term in title_steps_haystack for term in character_terms):
+    elif _positive_hits(title_steps_haystack, character_terms):
         presentation_profile = "character_loop" if dynamic else "character_showcase"
-    elif any(term in title_steps_haystack for term in scene_terms):
+    elif _positive_hits(title_steps_haystack, scene_terms):
         presentation_profile = "cinematic_scene"
     elif any(term in haystack for term in detail_terms):
         presentation_profile = "detail_showcase"
@@ -922,32 +967,51 @@ def build_material_spec(
 ) -> dict[str, Any]:
     text = "\n".join([title, tutorial, json.dumps(steps or {}, ensure_ascii=False)])
     title_l = title.lower()
-    color_hits = sorted(
-        {term for term in COLOR_TERMS if _term_pattern(term).search(text)}
-    )
+    # 金属/金属度 describes a shader property, not the gold colour. Negated
+    # transparency likewise must not turn an opaque surface transparent.
+    color_hits = _positive_hits(re.sub(r"金属度?", "", text), COLOR_TERMS)
     material_hits = _positive_hits(text, MATERIAL_TERMS)
     texture_detail_terms = [
         "程序化",
-        "纹理",
-        "贴图",
         "噪波",
         "噪声",
         "凹凸",
-        "粗糙",
-        "texture",
         "noise",
         "bump",
-        "roughness",
         "wave",
         "voronoi",
         "color ramp",
         "colorramp",
+        "grain",
+        "speckles",
+        "color variation",
+        "纹理变化",
+        "颗粒",
+        "斑点",
+        "木纹",
     ]
-    texture_detail_hits = _positive_hits(text, texture_detail_terms)
-    title_texture_hits = _positive_hits(
-        title,
-        texture_detail_terms + ["材质", "shader", "material"],
+    image_texture_hits = _positive_hits(
+        text, ["image texture", "图像纹理", "图片纹理", "图像贴图", "图片贴图"]
     )
+    procedural_texture_hits = _positive_hits(
+        text,
+        ["procedural", "程序化", "noise", "噪声", "噪波", "voronoi", "wave texture"],
+    )
+    texture_detail_hits = _positive_hits(text, texture_detail_terms)
+    # A uniform BSDF Roughness value is material setup, not surface texture.
+    # Spatial roughness detail still counts when explicitly described.
+    roughness_patterns = (
+        r"\broughness[\s_-]+(?:map|texture|variation|pattern|noise)\b",
+        r"\b(?:varying|variable|nonuniform|non-uniform|textured)\s+roughness\b",
+        r"粗糙度(?:贴图|纹理|变化|分布|噪声)|(?:变化|随机|不均匀)的?粗糙度",
+    )
+    for pattern in roughness_patterns:
+        for match in re.finditer(pattern, text, re.I):
+            if _positive_term_matches(text, match.group(0)):
+                texture_detail_hits.append("roughness_variation")
+                break
+    texture_detail_hits = sorted(set(texture_detail_hits))
+    title_texture_hits = _positive_hits(title, texture_detail_terms)
     human_hits = _positive_hits(text, HUMAN_TERMS)
     animal_text = text
     animal_title = title
@@ -1001,6 +1065,8 @@ def build_material_spec(
         "texture_detail_terms_detected": texture_detail_hits,
         "title_texture_terms_detected": title_texture_hits,
         "texture_detail_required": bool(title_texture_hits or texture_detail_hits),
+        "image_texture_required": bool(image_texture_hits),
+        "procedural_texture_required": bool(procedural_texture_hits),
         "hard_constraints": [
             "Do not leave the main asset with default gray/white material unless the tutorial explicitly says it is white/gray.",
             "Every visible major object must receive a named material with base color and roughness.",
@@ -1013,9 +1079,14 @@ def build_material_spec(
         spec["hard_constraints"].extend(
             [
                 "The final render must visibly show the procedural/material texture detail described by the tutorial, such as grain, speckles, waves, color variation, bump, roughness variation, or shader-node pattern.",
-                "A smooth nearly uniform surface is a failure for material/node/texture tutorials, even if the code contains shader nodes.",
+                "A uniform surface is a failure only when the tutorial actually demonstrates spatial variation; a uniform image texture or constant BSDF parameter does not imply variation.",
                 "When the tutorial is mainly about material nodes, the material appearance is more important than inventing extra model geometry.",
             ]
+        )
+    if spec["image_texture_required"]:
+        spec["hard_constraints"].append(
+            "Use the supplied Image Texture and preserve its demonstrated node connections. "
+            "Do not replace an available image with invented procedural noise; a uniform input image may produce a uniform surface."
         )
     if subject_family == "human_character":
         spec["hard_constraints"].extend(

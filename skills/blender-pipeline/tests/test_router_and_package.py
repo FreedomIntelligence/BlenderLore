@@ -64,6 +64,18 @@ class RouterContractTests(unittest.TestCase):
             self.assertEqual(1, len(issues))
             self.assertIn("unresolved generation import", issues[0].message)
 
+    def test_archive_and_external_drive_metadata_are_not_source_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "._guide.md").write_bytes(b"\x00\x05\x16\x07\xb0")
+            (root / "._module.py").write_bytes(b"\x00\x05\x16\x07\xb0")
+            metadata = root / "__MACOSX"
+            metadata.mkdir()
+            (metadata / "guide.md").write_bytes(b"\xb0")
+            self.assertEqual([], list(validator.iter_files(root)))
+            self.assertEqual([], validator.check_links(root))
+            self.assertEqual([], validator.check_imports(root))
+
 
 if __name__ == "__main__":
     unittest.main()

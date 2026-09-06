@@ -5,6 +5,13 @@ This index covers maintained pipeline knowledge through 2026-08-22. The
 skill guidance; rules are organized by decision boundary rather than by run or
 incident.
 
+The active library contains package-maintained useful guidance and separately
+admitted, reviewed success lessons. `curated` guidance is not a claim of
+independently verified successful artifact reproduction. Raw failed examples,
+rejected experiences, unreviewed candidates, and disabled recipes are not
+active knowledge. The public showcase catalog below remains authorization and
+availability metadata; listing an entry does not admit it as successful knowledge.
+
 | Need | Load | Useful search terms |
 | --- | --- | --- |
 | Reproduce a named public showcase under its authorization contract | [Public showcase catalog](../reproduction/knowledge/manifest.json) and [reproduction contract](../reproduction/references/execution-contract.md) | recipe, distribution, visual acceptance, public snapshot |
@@ -18,7 +25,7 @@ Load only the route-specific document plus the shared document needed for the
 current decision. Each maintained rule states when it applies, the decision it
 changes, how to verify it, and search terms.
 
-Promote new knowledge only when it is either a cross-task invariant or has
-survived an unrelated holdout. Keep task identifiers, machine paths, private
-endpoints, credentials, raw traces, run histories, and evaluation outputs out
-of this knowledge package.
+For storage, exact chunk boundaries, offline retrieval, and the admission gate,
+read [Operations and knowledge lifecycle](operations-and-knowledge.md). Keep
+task identifiers, machine paths, private endpoints, credentials, raw traces,
+run histories, and evaluation outputs out of this knowledge package.

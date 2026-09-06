@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 GENERATION_ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,7 @@ class GenerationPortabilityTests(unittest.TestCase):
             "blender_knowledge_common",
             "blender_version_registry",
             "build_blender_knowledge_index",
+            "codex_cli_chat_bridge",
             "model_direct_generation_contracts",
             "prepare_rich_tutorial_evidence",
             "project_paths",
@@ -58,6 +60,7 @@ class GenerationPortabilityTests(unittest.TestCase):
         runtime_provided = {
             "bpy",
             "bpy_extras",
+            "gpu",
             "fcntl",
             "mathutils",
             "PIL",
@@ -69,6 +72,9 @@ class GenerationPortabilityTests(unittest.TestCase):
             module
             for module in imported_roots - local_modules - runtime_provided
             if importlib.util.find_spec(module) is None
+            and not (
+                GENERATION_ROOT.parent / "tutorial-extraction/scripts" / f"{module}.py"
+            ).is_file()
         }
         self.assertEqual(unresolved, set())
 
@@ -158,13 +164,16 @@ class GenerationPortabilityTests(unittest.TestCase):
         )
 
     def test_curated_knowledge_manifest_rejects_path_escape(self) -> None:
-        with tempfile.TemporaryDirectory(dir=GENERATION_ROOT) as directory:
+        with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "manifest.json"
             manifest.write_text(
                 json.dumps({"documents": [{"path": "../../../outside.md"}]}),
                 encoding="utf-8",
             )
-            with self.assertRaises(knowledge_common.KnowledgeManifestError):
+            with (
+                mock.patch.object(knowledge_index, "SKILL_ROOT", Path(directory)),
+                self.assertRaises(knowledge_common.KnowledgeManifestError),
+            ):
                 knowledge_index._bounded_manifest_markdown_paths(manifest)
 
     def test_public_cli_help(self) -> None:

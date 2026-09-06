@@ -19,6 +19,9 @@ dist/
 !.env.example
 *.pem
 *.key
+pipeline.config.json
+model_api_key
+*.sqlite3
 
 # Pipeline runtime output
 skills/blender-pipeline/**/.artifacts/
@@ -35,4 +38,6 @@ skills/blender-pipeline/**/runs/
 
 # Platform metadata
 .DS_Store
+._*
+__MACOSX/
 Thumbs.db

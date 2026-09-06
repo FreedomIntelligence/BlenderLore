@@ -23,24 +23,50 @@ import tutorial_extraction_core as core
 
 
 REQUIRED_FILES = (
-    "tutorial.md", "tutorial_path_refs.md", "tutorial_visual_contract.json",
-    "steps_verified.json", "steps_candidates.json", "tutorial_manifest.json",
-    "evidence/index.json", "rich_evidence/windows.json",
-    "transcript/segments.jsonl", "transcript/source.json",
-    "ocr/observations.jsonl", "uncertain_items.json",
+    "tutorial.md",
+    "tutorial_path_refs.md",
+    "tutorial_visual_contract.json",
+    "steps_verified.json",
+    "steps_candidates.json",
+    "tutorial_manifest.json",
+    "evidence/index.json",
+    "rich_evidence/windows.json",
+    "transcript/segments.jsonl",
+    "transcript/source.json",
+    "ocr/observations.jsonl",
+    "uncertain_items.json",
 )
 WORKSPACE_INPUTS = {
-    "source.info.json", "target_reference.png", "final_reference.png",
-    "source.mp4", "reproduction_run_manifest.json",
+    "source.info.json",
+    "target_reference.png",
+    "final_reference.png",
+    "source.mp4",
+    "reproduction_run_manifest.json",
 }
 VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}
 FORBIDDEN_KEY_MARKERS = (
-    "api_key", "authorization", "endpoint", "raw_response",
-    "provider_response", "model_response", "secret", "bearer_token",
+    "api_key",
+    "authorization",
+    "endpoint",
+    "raw_response",
+    "provider_response",
+    "model_response",
+    "secret",
+    "bearer_token",
 )
 UNKNOWN_VALUES = {
-    "", "unknown", "uncertain", "none", "n/a", "not visible",
-    "未知", "不确定", "不可见", "看不清", "无法确认", "无法辨认",
+    "",
+    "unknown",
+    "uncertain",
+    "none",
+    "n/a",
+    "not visible",
+    "未知",
+    "不确定",
+    "不可见",
+    "看不清",
+    "无法确认",
+    "无法辨认",
 }
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 REGIONS = {"full", "right_ui", "node_editor", "timeline", "properties"}
@@ -84,7 +110,11 @@ def _not_unknown(value: Any) -> bool:
 
 
 def _finite_number(value: Any) -> bool:
-    return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(float(value))
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(float(value))
+    )
 
 
 def _model_identity_matches(requested: str, observed: str) -> bool:
@@ -96,14 +126,22 @@ def _model_identity_matches(requested: str, observed: str) -> bool:
     return False
 
 
-def _validate_schema(instance: Any, schema_path: Path, label: str, issues: list[str]) -> None:
+def _validate_schema(
+    instance: Any, schema_path: Path, label: str, issues: list[str]
+) -> None:
     if jsonschema is None:
-        issues.append("jsonschema dependency is unavailable; package validation cannot continue")
+        issues.append(
+            "jsonschema dependency is unavailable; package validation cannot continue"
+        )
         return
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
-        errors = sorted(validator.iter_errors(instance), key=lambda item: list(item.path))
+        validator = jsonschema.Draft202012Validator(
+            schema, format_checker=jsonschema.FormatChecker()
+        )
+        errors = sorted(
+            validator.iter_errors(instance), key=lambda item: list(item.path)
+        )
     except (OSError, UnicodeError, json.JSONDecodeError, jsonschema.SchemaError) as exc:
         issues.append(f"cannot load {label} schema: {exc}")
         return
@@ -130,7 +168,9 @@ def _inspect_sensitive(value: Any, issues: list[str], location: str) -> None:
 
 def _read_jsonl(path: Path, label: str, issues: list[str]) -> list[Mapping[str, Any]]:
     rows: list[Mapping[str, Any]] = []
-    for number, line in enumerate(path.read_text(encoding="utf-8", errors="strict").splitlines(), 1):
+    for number, line in enumerate(
+        path.read_text(encoding="utf-8", errors="strict").splitlines(), 1
+    ):
         if not line.strip():
             continue
         try:
@@ -161,6 +201,11 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             schema = None
         if schema == "video2blender-visual-tutorial.v1":
             from visual_tutorial_pipeline import validate_workspace
+
+            return validate_workspace(root)
+        if schema == "video2blender-legacy-rich-tutorial.v1":
+            from legacy_rich_tutorial_pipeline import validate_workspace
+
             return validate_workspace(root)
     issues: list[str] = []
     for relative in REQUIRED_FILES:
@@ -169,7 +214,11 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
     if issues:
         return sorted(set(issues))
 
-    all_files = {item.relative_to(root).as_posix(): item for item in root.rglob("*") if item.is_file()}
+    all_files = {
+        item.relative_to(root).as_posix(): item
+        for item in root.rglob("*")
+        if item.is_file()
+    }
     allowed_inputs = WORKSPACE_INPUTS if allow_workspace_source else set()
     for relative, item in all_files.items():
         if item.suffix.casefold() in VIDEO_SUFFIXES and not (
@@ -189,9 +238,14 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
     windows_doc = read_json(root / "rich_evidence/windows.json", issues)
     visual_doc = read_json(root / "tutorial_visual_contract.json", issues)
     json_docs = {
-        "manifest": manifest, "verified": verified, "candidates": candidates_doc,
-        "evidence": evidence_doc, "transcript": transcript_source,
-        "uncertain": uncertain_doc, "windows": windows_doc, "visual": visual_doc,
+        "manifest": manifest,
+        "verified": verified,
+        "candidates": candidates_doc,
+        "evidence": evidence_doc,
+        "transcript": transcript_source,
+        "uncertain": uncertain_doc,
+        "windows": windows_doc,
+        "visual": visual_doc,
     }
     for label, value in json_docs.items():
         if not isinstance(value, (Mapping, list)):
@@ -200,10 +254,20 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
 
     schema_root = Path(__file__).resolve().parents[1] / "schemas"
     _validate_schema(manifest, schema_root / "manifest.schema.json", "manifest", issues)
-    _validate_schema(verified, schema_root / "steps.schema.json", "verified steps", issues)
-    requested_model = str(manifest.get("model") or "") if isinstance(manifest, Mapping) else ""
-    provider = str(manifest.get("provider") or "") if isinstance(manifest, Mapping) else ""
-    fallback_reason = str(manifest.get("fallback_reason") or "").strip() if isinstance(manifest, Mapping) else ""
+    _validate_schema(
+        verified, schema_root / "steps.schema.json", "verified steps", issues
+    )
+    requested_model = (
+        str(manifest.get("model") or "") if isinstance(manifest, Mapping) else ""
+    )
+    provider = (
+        str(manifest.get("provider") or "") if isinstance(manifest, Mapping) else ""
+    )
+    fallback_reason = (
+        str(manifest.get("fallback_reason") or "").strip()
+        if isinstance(manifest, Mapping)
+        else ""
+    )
     if provider not in core.ALLOWED_PROVIDERS:
         issues.append("manifest provider must be api or codex-cli")
     if requested_model == "gpt-5.5" and not fallback_reason:
@@ -214,7 +278,11 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         core.validate_model_fallback(requested_model, fallback_reason)
     except core.ExtractionError as exc:
         issues.append(f"manifest model fallback gate failed: {exc}")
-    source = manifest.get("source") if isinstance(manifest, Mapping) and isinstance(manifest.get("source"), Mapping) else {}
+    source = (
+        manifest.get("source")
+        if isinstance(manifest, Mapping) and isinstance(manifest.get("source"), Mapping)
+        else {}
+    )
     source_duration = source.get("duration_seconds")
     if not _finite_number(source_duration) or float(source_duration) <= 0:
         issues.append("manifest source duration_seconds must be positive and finite")
@@ -234,25 +302,53 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         issues.append("manifest model_usage must be an object")
     else:
         calls, reported = usage.get("calls"), usage.get("reported_calls")
-        if isinstance(calls, bool) or not isinstance(calls, int) or calls < 1 or reported != calls:
+        if (
+            isinstance(calls, bool)
+            or not isinstance(calls, int)
+            or calls < 1
+            or reported != calls
+        ):
             issues.append("every model call must have exactly one usage receipt")
-        if not _model_identity_matches(requested_model, str(usage.get("response_model") or "")):
-            issues.append("model usage response identity does not match requested model family")
+        if not _model_identity_matches(
+            requested_model, str(usage.get("response_model") or "")
+        ):
+            issues.append(
+                "model usage response identity does not match requested model family"
+            )
         if usage.get("finish_reason") != "stop":
             issues.append("model usage does not contain a clean stop finish reason")
         for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
             value = usage.get(key)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 issues.append(f"model usage {key} must be a positive integer")
-        if all(isinstance(usage.get(key), int) for key in ("prompt_tokens", "completion_tokens", "total_tokens")) and usage.get("total_tokens", 0) < usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0):
+        if all(
+            isinstance(usage.get(key), int)
+            for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+        ) and usage.get("total_tokens", 0) < usage.get("prompt_tokens", 0) + usage.get(
+            "completion_tokens", 0
+        ):
             issues.append("model usage token totals are inconsistent")
 
-    if not isinstance(transcript_source, Mapping) or transcript_source.get("schema") != "video2blender-tutorial-transcript-source.v2":
+    if (
+        not isinstance(transcript_source, Mapping)
+        or transcript_source.get("schema")
+        != "video2blender-tutorial-transcript-source.v2"
+    ):
         issues.append("transcript source schema is not v2")
-    transcript_rows = _read_jsonl(root / "transcript/segments.jsonl", "transcript", issues)
+    transcript_rows = _read_jsonl(
+        root / "transcript/segments.jsonl", "transcript", issues
+    )
     for row in transcript_rows:
-        start, end, text = row.get("start_sec"), row.get("end_sec"), str(row.get("text") or "").strip()
-        if not _finite_number(start) or not _finite_number(end) or float(end) < float(start):
+        start, end, text = (
+            row.get("start_sec"),
+            row.get("end_sec"),
+            str(row.get("text") or "").strip(),
+        )
+        if (
+            not _finite_number(start)
+            or not _finite_number(end)
+            or float(end) < float(start)
+        ):
             issues.append("transcript segment has an invalid time range")
         elif after_video_end(end):
             issues.append("transcript segment exceeds source video duration")
@@ -261,12 +357,18 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
     if isinstance(transcript_source, Mapping):
         if transcript_source.get("segment_count") != len(transcript_rows):
             issues.append("transcript segment_count does not match segments.jsonl")
-        if transcript_source.get("status") == "unavailable" and not str(transcript_source.get("warning") or "").strip():
+        if (
+            transcript_source.get("status") == "unavailable"
+            and not str(transcript_source.get("warning") or "").strip()
+        ):
             issues.append("unavailable transcript must have an explicit warning")
 
     ocr_rows = _read_jsonl(root / "ocr/observations.jsonl", "ocr", issues)
     for row in ocr_rows:
-        if not _finite_number(row.get("timestamp_sec")) or float(row.get("timestamp_sec", -1)) < 0:
+        if (
+            not _finite_number(row.get("timestamp_sec"))
+            or float(row.get("timestamp_sec", -1)) < 0
+        ):
             issues.append("OCR observation has an invalid timestamp")
         elif after_video_end(row.get("timestamp_sec")):
             issues.append("OCR observation exceeds source video duration")
@@ -275,12 +377,25 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         if not str(row.get("text") or "").strip():
             issues.append("OCR observation text is empty")
 
-    if not isinstance(uncertain_doc, Mapping) or uncertain_doc.get("schema") != "video2blender-tutorial-uncertain.v2" or not isinstance(uncertain_doc.get("items"), list):
+    if (
+        not isinstance(uncertain_doc, Mapping)
+        or uncertain_doc.get("schema") != "video2blender-tutorial-uncertain.v2"
+        or not isinstance(uncertain_doc.get("items"), list)
+    ):
         issues.append("uncertain_items.json has an invalid v2 structure")
-    uncertain_items = uncertain_doc.get("items") if isinstance(uncertain_doc, Mapping) and isinstance(uncertain_doc.get("items"), list) else []
+    uncertain_items = (
+        uncertain_doc.get("items")
+        if isinstance(uncertain_doc, Mapping)
+        and isinstance(uncertain_doc.get("items"), list)
+        else []
+    )
 
     images = evidence_doc.get("images") if isinstance(evidence_doc, Mapping) else None
-    if not isinstance(evidence_doc, Mapping) or evidence_doc.get("schema") != "video2blender-tutorial-evidence.v2" or not isinstance(images, list):
+    if (
+        not isinstance(evidence_doc, Mapping)
+        or evidence_doc.get("schema") != "video2blender-tutorial-evidence.v2"
+        or not isinstance(images, list)
+    ):
         issues.append("evidence index has an invalid v2 structure")
         images = []
     evidence_by_id: dict[str, Mapping[str, Any]] = {}
@@ -288,7 +403,15 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         if not isinstance(item, Mapping):
             issues.append("evidence item must be an object")
             continue
-        required = {"image_id", "step_id", "timestamp_sec", "role", "region", "path", "sha256"}
+        required = {
+            "image_id",
+            "step_id",
+            "timestamp_sec",
+            "role",
+            "region",
+            "path",
+            "sha256",
+        }
         if not required.issubset(item):
             issues.append("evidence item is missing required fields")
             continue
@@ -297,7 +420,10 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             issues.append(f"missing or duplicate evidence ID: {image_id}")
             continue
         evidence_by_id[image_id] = item
-        if not _finite_number(item.get("timestamp_sec")) or float(item.get("timestamp_sec", -1)) < 0:
+        if (
+            not _finite_number(item.get("timestamp_sec"))
+            or float(item.get("timestamp_sec", -1)) < 0
+        ):
             issues.append(f"evidence has an invalid timestamp: {image_id}")
         elif after_video_end(item.get("timestamp_sec")):
             issues.append(f"evidence exceeds source video duration: {image_id}")
@@ -315,8 +441,14 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             except Exception:
                 issues.append(f"evidence image is not decodable: {image_id}")
 
-    candidate_steps = candidates_doc.get("steps") if isinstance(candidates_doc, Mapping) else None
-    if not isinstance(candidates_doc, Mapping) or candidates_doc.get("schema") != core.SCHEMA_CANDIDATES or not isinstance(candidate_steps, list):
+    candidate_steps = (
+        candidates_doc.get("steps") if isinstance(candidates_doc, Mapping) else None
+    )
+    if (
+        not isinstance(candidates_doc, Mapping)
+        or candidates_doc.get("schema") != core.SCHEMA_CANDIDATES
+        or not isinstance(candidate_steps, list)
+    ):
         issues.append("candidate steps document has an invalid v2 structure")
         candidate_steps = []
     dropped_uncertainty: dict[str, list[str]] = {}
@@ -334,9 +466,12 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
     receipt_drops: dict[str, list[str]] = {}
     for item in candidate_steps:
         gate = item.get("gate") if isinstance(item, Mapping) else None
-        if not isinstance(gate, Mapping) or gate.get("status") not in {
-            "accepted", "accepted_with_dropped_claims", "uncertain"
-        } or not isinstance(gate.get("reasons"), list):
+        if (
+            not isinstance(gate, Mapping)
+            or gate.get("status")
+            not in {"accepted", "accepted_with_dropped_claims", "uncertain"}
+            or not isinstance(gate.get("reasons"), list)
+        ):
             issues.append("candidate lacks a valid Q-Gate receipt")
             continue
         step_id = str(item.get("step_id") or "")
@@ -346,8 +481,7 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             issues.append(f"accepted candidate has nonempty Q-Gate reasons: {step_id}")
         if status == "accepted_with_dropped_claims":
             if not reasons or any(
-                not isinstance(reason, str)
-                or not reason.startswith("dropped_claim:")
+                not isinstance(reason, str) or not reason.startswith("dropped_claim:")
                 for reason in reasons
             ):
                 issues.append(
@@ -385,8 +519,9 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
                 f"verified step must retain pre/action/stable/ocr_best evidence: {step_id}"
             )
         role_items = {
-            str(evidence_by_id[evidence_id].get("role") or ""):
-            evidence_by_id[evidence_id]
+            str(evidence_by_id[evidence_id].get("role") or ""): evidence_by_id[
+                evidence_id
+            ]
             for evidence_id in evidence_ids
             if evidence_id in evidence_by_id
         }
@@ -419,10 +554,14 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             issues.append(f"verified step exceeds source video duration: {step_id}")
         for evidence_id in evidence_ids:
             if evidence_id not in evidence_by_id:
-                issues.append(f"verified step cites missing evidence: {step_id}:{evidence_id}")
+                issues.append(
+                    f"verified step cites missing evidence: {step_id}:{evidence_id}"
+                )
             owner = evidence_owner.setdefault(evidence_id, step_id)
             if owner != step_id:
-                issues.append(f"evidence is shared across verified steps: {evidence_id}")
+                issues.append(
+                    f"evidence is shared across verified steps: {evidence_id}"
+                )
         claims = step.get("claims") if isinstance(step.get("claims"), list) else []
         for claim in claims:
             if not isinstance(claim, Mapping):
@@ -432,16 +571,24 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
                 issues.append(f"verified claim cites missing evidence: {step_id}")
             if any(value not in evidence_ids for value in claim_ids):
                 issues.append(f"verified claim uses cross-step evidence: {step_id}")
-            if not any(value in evidence_by_id and evidence_by_id[value].get("role") in {"action", "stable", "ocr_best"} for value in claim_ids):
+            if not any(
+                value in evidence_by_id
+                and evidence_by_id[value].get("role")
+                in {"action", "stable", "ocr_best"}
+                for value in claim_ids
+            ):
                 issues.append(f"verified claim lacks action/post evidence: {step_id}")
 
-        def claim_matches(kind: str, field: str, value: Any, parameter: str = "") -> bool:
+        def claim_matches(
+            kind: str, field: str, value: Any, parameter: str = ""
+        ) -> bool:
             return any(
                 isinstance(claim, Mapping)
                 and claim.get("kind") == kind
                 and claim.get("field") == field
                 and str(claim.get("parameter") or "") == parameter
-                and core.canonical_sha256(claim.get("value")) == core.canonical_sha256(value)
+                and core.canonical_sha256(claim.get("value"))
+                == core.canonical_sha256(value)
                 and bool(claim.get("evidence_ids"))
                 for claim in claims
             )
@@ -464,21 +611,38 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         )
         if not closing_action_claim:
             issues.append(f"verified action lacks an exact claim: {step_id}")
-        if str(step.get("object") or "") and not claim_matches("object", "object", step.get("object")):
+        if str(step.get("object") or "") and not claim_matches(
+            "object", "object", step.get("object")
+        ):
             issues.append(f"verified object lacks an exact claim: {step_id}")
-        parameters = step.get("parameters") if isinstance(step.get("parameters"), Mapping) else {}
+        parameters = (
+            step.get("parameters")
+            if isinstance(step.get("parameters"), Mapping)
+            else {}
+        )
         for key, value in parameters.items():
             if not _not_unknown(value):
-                issues.append(f"verified parameter contains an unknown value: {step_id}:{key}")
+                issues.append(
+                    f"verified parameter contains an unknown value: {step_id}:{key}"
+                )
             elif not claim_matches("parameter", "parameters", value, str(key)):
-                issues.append(f"verified parameter lacks an exact claim: {step_id}:{key}")
+                issues.append(
+                    f"verified parameter lacks an exact claim: {step_id}:{key}"
+                )
         relation_type = str(step.get("relation_type") or "")
         relation = str(step.get("spatial_relation") or "")
         if relation_type != "none" and not relation:
             issues.append(f"verified relationship has no spatial_relation: {step_id}")
         if relation and not claim_matches("connection", "spatial_relation", relation):
-            issues.append(f"verified relationship lacks an exact connection claim: {step_id}")
-        for field, kind in (("visual_result", "visual_result"), ("material_color", "material_color"), ("surface_detail", "surface_detail"), ("implementation_notes", "implementation_note")):
+            issues.append(
+                f"verified relationship lacks an exact connection claim: {step_id}"
+            )
+        for field, kind in (
+            ("visual_result", "visual_result"),
+            ("material_color", "material_color"),
+            ("surface_detail", "surface_detail"),
+            ("implementation_notes", "implementation_note"),
+        ):
             value = str(step.get(field) or "")
             if value and not claim_matches(kind, field, value):
                 issues.append(f"verified {field} lacks an exact claim: {step_id}")
@@ -491,17 +655,36 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
             parameter = str(claim.get("parameter") or "")
             value = claim.get("value")
             supports_promoted_field = (
-                (kind == "action" and field == "action" and not parameter
-                 and core.canonical_sha256(value) == core.canonical_sha256(step.get("action")))
-                or (kind == "object" and field == "object" and not parameter
+                (
+                    kind == "action"
+                    and field == "action"
+                    and not parameter
+                    and core.canonical_sha256(value)
+                    == core.canonical_sha256(step.get("action"))
+                )
+                or (
+                    kind == "object"
+                    and field == "object"
+                    and not parameter
                     and bool(str(step.get("object") or ""))
-                    and core.canonical_sha256(value) == core.canonical_sha256(step.get("object")))
-                or (kind == "parameter" and field == "parameters"
+                    and core.canonical_sha256(value)
+                    == core.canonical_sha256(step.get("object"))
+                )
+                or (
+                    kind == "parameter"
+                    and field == "parameters"
                     and parameter in parameters
-                    and core.canonical_sha256(value) == core.canonical_sha256(parameters.get(parameter)))
-                or (kind == "connection" and field == "spatial_relation" and not parameter
-                    and relation_type != "none" and bool(relation)
-                    and core.canonical_sha256(value) == core.canonical_sha256(relation))
+                    and core.canonical_sha256(value)
+                    == core.canonical_sha256(parameters.get(parameter))
+                )
+                or (
+                    kind == "connection"
+                    and field == "spatial_relation"
+                    and not parameter
+                    and relation_type != "none"
+                    and bool(relation)
+                    and core.canonical_sha256(value) == core.canonical_sha256(relation)
+                )
                 or any(
                     kind == optional_kind
                     and field == optional_field
@@ -523,24 +706,40 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
                 )
 
     title = str(manifest.get("title") or "") if isinstance(manifest, Mapping) else ""
-    expected_markdown = core.tutorial_markdown(title, str(source.get("url") or ""), steps, evidence_by_id)
+    expected_markdown = core.tutorial_markdown(
+        title, str(source.get("url") or ""), steps, evidence_by_id
+    )
     tutorial = (root / "tutorial.md").read_text(encoding="utf-8")
     if tutorial != expected_markdown:
-        issues.append("tutorial.md is not the exact deterministic projection of verified steps")
-    if (root / "tutorial_path_refs.md").read_bytes() != (root / "tutorial.md").read_bytes():
+        issues.append(
+            "tutorial.md is not the exact deterministic projection of verified steps"
+        )
+    if (root / "tutorial_path_refs.md").read_bytes() != (
+        root / "tutorial.md"
+    ).read_bytes():
         issues.append("tutorial_path_refs.md must byte-match tutorial.md")
     if visual_doc != core.tutorial_visual_contract(steps):
-        issues.append("tutorial_visual_contract.json is not the deterministic verified projection")
+        issues.append(
+            "tutorial_visual_contract.json is not the deterministic verified projection"
+        )
 
     if not isinstance(windows_doc, list):
         issues.append("rich_evidence/windows.json must be an array")
         windows_doc = []
     for index, item in enumerate(windows_doc):
-        if not isinstance(item, Mapping) or item.get("window_index") != index or not _finite_number(item.get("start_sec")) or not _finite_number(item.get("end_sec")) or float(item.get("end_sec", 0)) < float(item.get("start_sec", 0)):
+        if (
+            not isinstance(item, Mapping)
+            or item.get("window_index") != index
+            or not _finite_number(item.get("start_sec"))
+            or not _finite_number(item.get("end_sec"))
+            or float(item.get("end_sec", 0)) < float(item.get("start_sec", 0))
+        ):
             issues.append(f"rich evidence window is invalid at index {index}")
             continue
         if float(item.get("start_sec", 0)) < 0 or after_video_end(item.get("end_sec")):
-            issues.append(f"rich evidence window exceeds source video duration at index {index}")
+            issues.append(
+                f"rich evidence window exceeds source video duration at index {index}"
+            )
         inside_file(root, str(item.get("sheet") or ""), issues)
 
     counts = manifest.get("counts") if isinstance(manifest, Mapping) else None
@@ -548,8 +747,10 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         issues.append("manifest counts must be an object")
     else:
         expected_counts = {
-            "windows": len(windows_doc), "candidates": len(candidate_steps),
-            "verified_steps": len(steps), "uncertain_items": len(uncertain_items),
+            "windows": len(windows_doc),
+            "candidates": len(candidate_steps),
+            "verified_steps": len(steps),
+            "uncertain_items": len(uncertain_items),
             "evidence_images": len(images),
         }
         for key, expected in expected_counts.items():
@@ -559,10 +760,14 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         if isinstance(batches, bool) or not isinstance(batches, int) or batches < 0:
             issues.append("manifest verification_batches is invalid")
     warnings = manifest.get("warnings") if isinstance(manifest, Mapping) else None
-    if not isinstance(warnings, list) or any(not isinstance(value, str) or not value for value in warnings):
+    if not isinstance(warnings, list) or any(
+        not isinstance(value, str) or not value for value in warnings
+    ):
         issues.append("manifest warnings must be an array of nonempty strings")
         warnings = []
-    expected_status = "complete_with_warnings" if warnings or uncertain_items else "complete"
+    expected_status = (
+        "complete_with_warnings" if warnings or uncertain_items else "complete"
+    )
     if isinstance(manifest, Mapping) and manifest.get("status") != expected_status:
         issues.append("manifest status does not match warnings/uncertain items")
 
@@ -575,7 +780,9 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
         if declared != actual_outputs:
             missing = sorted(actual_outputs - declared)
             extra = sorted(declared - actual_outputs)
-            issues.append(f"manifest outputs are not exhaustive (missing={missing}, extra={extra})")
+            issues.append(
+                f"manifest outputs are not exhaustive (missing={missing}, extra={extra})"
+            )
         for raw, expected in outputs.items():
             if not isinstance(expected, str) or not SHA256_RE.fullmatch(expected):
                 issues.append(f"manifest output hash is not SHA-256: {raw}")
@@ -596,9 +803,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    issues = validate_package(args.package, allow_workspace_source=args.allow_workspace_source)
+    issues = validate_package(
+        args.package, allow_workspace_source=args.allow_workspace_source
+    )
     if args.json:
-        print(json.dumps({"status": "fail" if issues else "pass", "issues": issues}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"status": "fail" if issues else "pass", "issues": issues},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     elif issues:
         for issue in issues:
             print(f"error: {issue}", file=sys.stderr)

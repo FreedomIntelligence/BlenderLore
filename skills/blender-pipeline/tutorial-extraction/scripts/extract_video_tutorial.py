@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Video-to-visual-tutorial skill entrypoint, with optional replay adaptation."""
+"""Select visual-skill or production legacy-rich video tutorial extraction."""
 
 from __future__ import annotations
 
@@ -20,6 +20,12 @@ from tutorial_extraction_core import (
     validate_model_fallback,
 )
 from visual_tutorial_pipeline import extract_visual_tutorial, SCHEMA
+from legacy_rich_tutorial_pipeline import (
+    extract_legacy_rich_tutorial,
+    SCHEMA as RICH_SCHEMA,
+)
+
+TUTORIAL_METHODS = ("visual", "legacy-rich")
 
 
 def asr_language(value: str) -> str:
@@ -41,19 +47,41 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--title", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--profile", choices=sorted(PROFILES), default="balanced")
-    parser.add_argument("--model", choices=sorted(ALLOWED_MODELS), default="gpt-5.6-sol")
+    parser.add_argument(
+        "--model", choices=sorted(ALLOWED_MODELS), default="gpt-5.6-sol"
+    )
     parser.add_argument("--provider", choices=sorted(ALLOWED_PROVIDERS), default="api")
+    parser.add_argument(
+        "--tutorial-method",
+        choices=TUTORIAL_METHODS,
+        default="visual",
+        help="visual: supplied skill (recommended for <=10min videos); "
+        "legacy-rich: original complete rich-window tutorial with base64 images",
+    )
     parser.add_argument(
         "--fallback-reason",
         default="",
         help="required for gpt-5.5 and forbidden for gpt-5.6-sol",
     )
     parser.add_argument("--transcript", type=Path)
-    parser.add_argument("--input-asset", type=Path, action="append", default=[],
-                        help="actual learner input file or dependency folder; repeat as needed")
-    parser.add_argument("--cache-dir", type=Path,
-                        help="analysis cache outside the tutorial package; defaults beside output-dir")
-    parser.add_argument("--max-calls", type=int, help="total model-call cap including at most one repair")
+    parser.add_argument(
+        "--input-asset",
+        type=Path,
+        action="append",
+        default=[],
+        help="actual learner input file or dependency folder; repeat as needed",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        help="analysis cache outside the tutorial package; defaults beside output-dir",
+    )
+    parser.add_argument(
+        "--max-calls",
+        type=int,
+        help="total model-call cap including at most one repair; "
+        "visual minimum 5, legacy-rich all 60s windows plus 1",
+    )
     parser.add_argument(
         "--asr-language",
         type=asr_language,
@@ -81,8 +109,11 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument("--workspace-mode", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--replace-existing", action="store_true",
-                        help="replace only the existing manifest-owned package in workspace mode")
+    parser.add_argument(
+        "--replace-existing",
+        action="store_true",
+        help="replace only the existing manifest-owned package in workspace mode",
+    )
     return parser
 
 
@@ -92,7 +123,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             video_file = args.video_file.expanduser().resolve(strict=True)
         except OSError as exc:
-            raise ExtractionError(f"--video-file is unavailable: {args.video_file}") from exc
+            raise ExtractionError(
+                f"--video-file is unavailable: {args.video_file}"
+            ) from exc
         if not video_file.is_file():
             raise ExtractionError("--video-file must be a regular file")
     else:
@@ -101,7 +134,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             transcript = args.transcript.expanduser().resolve(strict=True)
         except OSError as exc:
-            raise ExtractionError(f"--transcript is unavailable: {args.transcript}") from exc
+            raise ExtractionError(
+                f"--transcript is unavailable: {args.transcript}"
+            ) from exc
         if not transcript.is_file():
             raise ExtractionError("--transcript must be a regular file")
     else:
@@ -110,6 +145,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ExtractionError("--provided-transcript-only requires --transcript")
     profile = PROFILES[args.profile]
     fallback_reason = validate_model_fallback(args.model, args.fallback_reason)
+    if args.window_budget is not None and args.window_budget < 0:
+        raise ExtractionError("--window-budget must be nonnegative (0 means automatic)")
+    minimum_calls = 5 if args.tutorial_method == "visual" else 2
+    if args.max_calls is not None and args.max_calls < minimum_calls:
+        raise ExtractionError(
+            f"--max-calls must be at least {minimum_calls} for {args.tutorial_method}"
+        )
     plan = extraction_plan(
         title=args.title,
         profile=profile,
@@ -123,11 +165,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         fallback_reason=fallback_reason,
     )
     if args.dry_run:
-        plan.update({"schema": SCHEMA + ".plan", "skill": "video-to-visual-tutorial",
-                     "learner_inputs": [str(p) for p in args.input_asset],
-                     "workspace_mode": args.workspace_mode,
-                     "package_layout": "<subject>/input + output/<subject>教程.md + output/<subject>验收评分Rubric.json + output/image",
-                     "max_calls": args.max_calls})
+        method_schema = SCHEMA if args.tutorial_method == "visual" else RICH_SCHEMA
+        plan.update(
+            {
+                "schema": method_schema + ".plan",
+                "tutorial_method": args.tutorial_method,
+                "skill": "video-to-visual-tutorial"
+                if args.tutorial_method == "visual"
+                else "production-rich-tutorial",
+                "learner_inputs": [str(p) for p in args.input_asset],
+                "workspace_mode": args.workspace_mode,
+                "package_layout": (
+                    "<subject>/input + output/<subject>教程.md + output/<subject>验收评分Rubric.json + output/image"
+                    if args.tutorial_method == "visual"
+                    else "<subject>/input + output/tutorial.md (base64) + output/tutorial_path_refs.md + output/image"
+                ),
+                "duration_recommendation": "<=10 minutes"
+                if args.tutorial_method == "visual"
+                else "full chronological coverage",
+                "max_calls": args.max_calls,
+            }
+        )
+        if args.tutorial_method == "legacy-rich":
+            plan["stages"] = [
+                "production 5-second evidence frames / complete 60-second windows",
+                "production rich-window prompt through selected provider",
+                "production rich chunk merger",
+                "base64 tutorial plus normal images and standalone learner inputs",
+            ]
         print(json.dumps(plan, ensure_ascii=False, indent=2))
         return 0
     endpoint = ""
@@ -141,11 +206,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "BLENDER_PIPELINE_API_KEY_FILE; codex-cli and dry-run do not"
             )
         secret_file = Path(secret_value)
-    if args.window_budget is not None and args.window_budget < 0:
-        raise ExtractionError("--window-budget must be nonnegative (0 means automatic)")
-    if args.max_calls is not None and args.max_calls < 5:
-        raise ExtractionError("--max-calls must be at least 5")
-    manifest = extract_visual_tutorial(
+    extractor = (
+        extract_visual_tutorial
+        if args.tutorial_method == "visual"
+        else extract_legacy_rich_tutorial
+    )
+    manifest = extractor(
         video_file=video_file,
         video_url=args.video_url,
         title=args.title,

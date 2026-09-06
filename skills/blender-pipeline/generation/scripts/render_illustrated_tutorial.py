@@ -104,10 +104,13 @@ def render(video_dir: Path, output: Path | None = None) -> dict[str, Any]:
     manifest_path = root / "tutorial_manifest.json"
     manifest = _read_object(manifest_path) if manifest_path.is_file() else {}
     if manifest.get("schema") == "video2blender-visual-tutorial.v1":
-        scripts = Path(__file__).resolve().parents[2] / "tutorial-extraction" / "scripts"
+        scripts = (
+            Path(__file__).resolve().parents[2] / "tutorial-extraction" / "scripts"
+        )
         sys.path.insert(0, str(scripts))
         try:
             from visual_tutorial_pipeline import render_html, validate_workspace
+
             issues = validate_workspace(root)
             if issues:
                 raise TutorialRenderError("; ".join(issues))
@@ -116,9 +119,14 @@ def render(video_dir: Path, output: Path | None = None) -> dict[str, Any]:
                 target = root / target
             if not target.resolve().is_relative_to(root):
                 raise TutorialRenderError("HTML output must stay inside --video-dir")
-            render_html(root / manifest["package"] / manifest["files"]["tutorial"], target)
-            return {"schema": "video2blender-illustrated-tutorial-receipt.v1",
-                    "html": str(target.relative_to(root)), "step_count": manifest["counts"]["steps"]}
+            render_html(
+                root / manifest["package"] / manifest["files"]["tutorial"], target
+            )
+            return {
+                "schema": "video2blender-illustrated-tutorial-receipt.v1",
+                "html": str(target.relative_to(root)),
+                "step_count": manifest["counts"]["steps"],
+            }
         finally:
             sys.path.pop(0)
     steps_path = root / "steps_verified.json"

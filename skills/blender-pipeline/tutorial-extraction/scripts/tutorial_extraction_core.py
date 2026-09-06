@@ -35,14 +35,54 @@ SCHEMA_MANIFEST = "video2blender-tutorial-manifest.v2"
 ALLOWED_MODELS = {"gpt-5.6-sol", "gpt-5.5"}
 ALLOWED_PROVIDERS = {"api", "codex-cli"}
 UNKNOWN_VALUES = {
-    "", "unknown", "uncertain", "none", "n/a", "not visible",
-    "未知", "不确定", "不可见", "看不清", "无法确认", "无法辨认",
+    "",
+    "unknown",
+    "uncertain",
+    "none",
+    "n/a",
+    "not visible",
+    "未知",
+    "不确定",
+    "不可见",
+    "看不清",
+    "无法确认",
+    "无法辨认",
 }
 ACTION_TERMS = (
-    "添加", "创建", "新建", "选择", "挤出", "缩放", "旋转", "移动", "删除",
-    "设置", "调整", "连接", "绑定", "权重", "关键帧", "烘焙", "贴图", "材质",
-    "节点", "灯光", "渲染", "add", "create", "select", "extrude", "scale",
-    "rotate", "move", "delete", "set", "connect", "bind", "keyframe", "bake",
+    "添加",
+    "创建",
+    "新建",
+    "选择",
+    "挤出",
+    "缩放",
+    "旋转",
+    "移动",
+    "删除",
+    "设置",
+    "调整",
+    "连接",
+    "绑定",
+    "权重",
+    "关键帧",
+    "烘焙",
+    "贴图",
+    "材质",
+    "节点",
+    "灯光",
+    "渲染",
+    "add",
+    "create",
+    "select",
+    "extrude",
+    "scale",
+    "rotate",
+    "move",
+    "delete",
+    "set",
+    "connect",
+    "bind",
+    "keyframe",
+    "bake",
 )
 
 
@@ -161,7 +201,9 @@ def validate_model_fallback(model: str, fallback_reason: str = "") -> str:
         raise ExtractionError("model must be gpt-5.6-sol or explicit fallback gpt-5.5")
     reason = fallback_reason.strip()
     if len(reason) > 500 or any(character in reason for character in "\r\n"):
-        raise ExtractionError("--fallback-reason must be a single line of at most 500 characters")
+        raise ExtractionError(
+            "--fallback-reason must be a single line of at most 500 characters"
+        )
     if model == "gpt-5.5" and not reason:
         raise ExtractionError("gpt-5.5 requires a non-empty --fallback-reason")
     if model == "gpt-5.6-sol" and reason:
@@ -200,7 +242,9 @@ def run_command(
             timeout=timeout,
         )
     except FileNotFoundError as exc:
-        raise ExtractionError(f"required executable is unavailable: {command[0]}") from exc
+        raise ExtractionError(
+            f"required executable is unavailable: {command[0]}"
+        ) from exc
     except subprocess.TimeoutExpired as exc:
         raise ExtractionError(f"command timed out: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:
@@ -211,8 +255,14 @@ def run_command(
 def ffprobe_duration(video: Path) -> float:
     result = run_command(
         [
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", str(video),
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(video),
         ],
         timeout=60,
         capture=True,
@@ -233,9 +283,17 @@ def extract_frame(video: Path, timestamp: float, output: Path, max_side: int) ->
         try:
             run_command(
                 [
-                    "ffmpeg", "-y", "-ss", f"{value:.3f}", "-i", str(video),
-                    "-frames:v", "1", "-vf",
-                    f"scale='min({max_side},iw)':-2", str(output),
+                    "ffmpeg",
+                    "-y",
+                    "-ss",
+                    f"{value:.3f}",
+                    "-i",
+                    str(video),
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    f"scale='min({max_side},iw)':-2",
+                    str(output),
                 ],
                 timeout=90,
             )
@@ -247,9 +305,29 @@ def extract_frame(video: Path, timestamp: float, output: Path, max_side: int) ->
     raise ExtractionError(f"could not decode frame at {timestamp:.3f}s")
 
 
+def remove_owned_tree(path: Path) -> None:
+    """Remove a run-owned tree, tolerating only entries already removed.
+
+    macOS may remove an AppleDouble sidecar when its companion is unlinked
+    on exFAT. Python 3.10 rmtree can then encounter that stale directory entry.
+    Permission, I/O and every other failure must still propagate.
+    """
+
+    def onerror(_function: Any, _path: str, error: tuple) -> None:
+        if not isinstance(error[1], FileNotFoundError):
+            raise error[1]
+
+    shutil.rmtree(path, onerror=onerror)
+
+
 def validate_url(value: str) -> str:
     parsed = urllib.parse.urlparse(value)
-    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+    ):
         raise ExtractionError("--video-url must be a credential-free HTTPS URL")
     return value
 
@@ -281,10 +359,18 @@ def fetch_platform_subtitles(url: str, root: Path) -> list[Path]:
     try:
         run_command(
             [
-                *yt_dlp, "--no-playlist", "--skip-download", "--write-subs",
-                "--write-auto-subs", "--sub-langs", "zh-Hans,zh-CN,zh,en",
-                "--sub-format", "vtt/srt/json3/best", "-o",
-                str(root / "subtitle"), url,
+                *yt_dlp,
+                "--no-playlist",
+                "--skip-download",
+                "--write-subs",
+                "--write-auto-subs",
+                "--sub-langs",
+                "zh-Hans,zh-CN,zh,en",
+                "--sub-format",
+                "vtt/srt/json3/best",
+                "-o",
+                str(root / "subtitle"),
+                url,
             ],
             timeout=300,
         )
@@ -307,19 +393,29 @@ def _known_caption_platform(url: str) -> bool:
 def materialize_url(url: str, root: Path) -> tuple[Path, list[Path]]:
     yt_dlp = _yt_dlp_command()
     if yt_dlp is None:
-        raise ExtractionError("--video-url requires the yt-dlp executable or Python module")
+        raise ExtractionError(
+            "--video-url requires the yt-dlp executable or Python module"
+        )
     root.mkdir(parents=True, exist_ok=True)
     video_template = root / "source.%(ext)s"
     run_command(
         [
-            *yt_dlp, "--no-playlist", "--merge-output-format", "mp4",
-            "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best",
-            "-o", str(video_template), url,
+            *yt_dlp,
+            "--no-playlist",
+            "--merge-output-format",
+            "mp4",
+            "-f",
+            "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best",
+            "-o",
+            str(video_template),
+            url,
         ],
         timeout=1800,
     )
     videos = sorted(
-        path for path in root.glob("source.*") if path.suffix.lower() in {".mp4", ".mkv", ".webm", ".mov"}
+        path
+        for path in root.glob("source.*")
+        if path.suffix.lower() in {".mp4", ".mkv", ".webm", ".mov"}
     )
     if not videos:
         raise ExtractionError("yt-dlp produced no video file")
@@ -355,10 +451,7 @@ def parse_transcript(path: Path) -> list[dict[str, Any]]:
         value = json.loads(text)
         if isinstance(value, Mapping):
             raw = (
-                value.get("body")
-                or value.get("events")
-                or value.get("segments")
-                or []
+                value.get("body") or value.get("events") or value.get("segments") or []
             )
         elif isinstance(value, list):
             raw = value
@@ -378,11 +471,27 @@ def parse_transcript(path: Path) -> list[dict[str, Any]]:
                     end = start + float(item.get("dDurationMs") or 0) / 1000.0
                 else:
                     caption = str(item.get("content") or item.get("text") or "")
-                    start = float(item.get("from") or item.get("start_sec") or item.get("start") or 0)
-                    end = float(item.get("to") or item.get("end_sec") or item.get("end") or start)
+                    start = float(
+                        item.get("from")
+                        or item.get("start_sec")
+                        or item.get("start")
+                        or 0
+                    )
+                    end = float(
+                        item.get("to")
+                        or item.get("end_sec")
+                        or item.get("end")
+                        or start
+                    )
                 caption = _clean_caption(caption)
                 if caption:
-                    rows.append({"start_sec": start, "end_sec": max(start, end), "text": caption})
+                    rows.append(
+                        {
+                            "start_sec": start,
+                            "end_sec": max(start, end),
+                            "text": caption,
+                        }
+                    )
         return rows
     if suffix == ".jsonl":
         for line in text.splitlines():
@@ -396,7 +505,9 @@ def parse_transcript(path: Path) -> list[dict[str, Any]]:
             if caption:
                 start = float(item.get("start_sec") or item.get("start") or 0)
                 end = float(item.get("end_sec") or item.get("end") or start)
-                rows.append({"start_sec": start, "end_sec": max(start, end), "text": caption})
+                rows.append(
+                    {"start_sec": start, "end_sec": max(start, end), "text": caption}
+                )
         return rows
     if suffix in {".srt", ".vtt"}:
         lines = text.replace("\r", "").splitlines()
@@ -435,7 +546,9 @@ def _transcript_tokens(text: str) -> list[str]:
             if len(value) == 1:
                 tokens.append(value)
             else:
-                tokens.extend(value[index : index + 2] for index in range(len(value) - 1))
+                tokens.extend(
+                    value[index : index + 2] for index in range(len(value) - 1)
+                )
         else:
             tokens.append(value)
     return tokens
@@ -466,9 +579,11 @@ def _segment_quality_reasons(text: str) -> list[str]:
         diversity = len(counts) / len(tokens)
         if dominant_ratio >= 0.70 and len(counts.most_common(1)[0][0]) <= 3:
             reasons.append("short_token_repetition")
-        if diversity <= 0.12 and sum(
-            count for _token, count in counts.most_common(3)
-        ) / len(tokens) >= 0.90:
+        if (
+            diversity <= 0.12
+            and sum(count for _token, count in counts.most_common(3)) / len(tokens)
+            >= 0.90
+        ):
             reasons.append("vocabulary_diversity")
     return reasons
 
@@ -499,29 +614,23 @@ def transcript_quality_gate(
     if len(tokens) >= 6:
         counts = Counter(tokens)
         diversity = len(counts) / len(tokens)
-        top_three_ratio = sum(
-            count for _token, count in counts.most_common(3)
-        ) / len(tokens)
+        top_three_ratio = sum(count for _token, count in counts.most_common(3)) / len(
+            tokens
+        )
         short_repeated_ratio = sum(
-            count
-            for token, count in counts.items()
-            if len(token) <= 3 and count >= 3
+            count for token, count in counts.items() if len(token) <= 3 and count >= 3
         ) / len(tokens)
         dominant_token, dominant_count = counts.most_common(1)[0]
         dominant_ratio = dominant_count / len(tokens)
         if (
-            len(tokens) <= 11
-            and len(dominant_token) <= 3
-            and dominant_ratio >= 0.80
-        ) or (diversity <= 0.12 and top_three_ratio >= 0.90) or (
-            diversity <= 0.20 and short_repeated_ratio >= 0.80
+            (len(tokens) <= 11 and len(dominant_token) <= 3 and dominant_ratio >= 0.80)
+            or (diversity <= 0.12 and top_three_ratio >= 0.90)
+            or (diversity <= 0.20 and short_repeated_ratio >= 0.80)
         ):
             rejected += len(accepted)
             accepted = []
             reason_counts["whole_transcript_repetition"] += 1
-    reasons = [
-        f"{name}:{count}" for name, count in sorted(reason_counts.items())
-    ]
+    reasons = [f"{name}:{count}" for name, count in sorted(reason_counts.items())]
     return accepted, rejected, reasons
 
 
@@ -574,7 +683,9 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
     try:
         import mlx_whisper  # type: ignore
 
-        model = os.environ.get("VIDEO2BLENDER_MLX_ASR_MODEL", "mlx-community/whisper-small-mlx-q4")
+        model = os.environ.get(
+            "VIDEO2BLENDER_MLX_ASR_MODEL", "mlx-community/whisper-small-mlx-q4"
+        )
         mlx_options: dict[str, Any] = {"path_or_hf_repo": model}
         if normalized_language is not None:
             mlx_options["language"] = normalized_language
@@ -583,8 +694,13 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
         value = mlx_whisper.transcribe(str(video), **mlx_options)
         raw = value.get("segments") or []
         rows = [
-            {"start_sec": float(item.get("start") or 0), "end_sec": float(item.get("end") or 0), "text": _clean_caption(str(item.get("text") or ""))}
-            for item in raw if isinstance(item, Mapping) and str(item.get("text") or "").strip()
+            {
+                "start_sec": float(item.get("start") or 0),
+                "end_sec": float(item.get("end") or 0),
+                "text": _clean_caption(str(item.get("text") or "")),
+            }
+            for item in raw
+            if isinstance(item, Mapping) and str(item.get("text") or "").strip()
         ]
         if rows:
             result = _accepted_transcript_result(
@@ -609,8 +725,13 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
             whisper_options["initial_prompt"] = initial_prompt
         value = whisper.load_model(model_name).transcribe(str(video), **whisper_options)
         rows = [
-            {"start_sec": float(item.get("start") or 0), "end_sec": float(item.get("end") or 0), "text": _clean_caption(str(item.get("text") or ""))}
-            for item in value.get("segments") or [] if isinstance(item, Mapping) and str(item.get("text") or "").strip()
+            {
+                "start_sec": float(item.get("start") or 0),
+                "end_sec": float(item.get("end") or 0),
+                "text": _clean_caption(str(item.get("text") or "")),
+            }
+            for item in value.get("segments") or []
+            if isinstance(item, Mapping) and str(item.get("text") or "").strip()
         ]
         if rows:
             result = _accepted_transcript_result(
@@ -641,8 +762,13 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
             str(video), **faster_options
         )
         rows = [
-            {"start_sec": float(item.start), "end_sec": float(item.end), "text": _clean_caption(str(item.text))}
-            for item in segments if str(item.text).strip()
+            {
+                "start_sec": float(item.start),
+                "end_sec": float(item.end),
+                "text": _clean_caption(str(item.text)),
+            }
+            for item in segments
+            if str(item.text).strip()
         ]
         if rows:
             result = _accepted_transcript_result(
@@ -670,7 +796,11 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
             "result; empty or low-quality/repetitive ASR was rejected and "
             "extraction continued with visual/OCR evidence only."
         ),
-        ["local_asr:mlx-whisper", "local_asr:openai-whisper", "local_asr:faster-whisper"],
+        [
+            "local_asr:mlx-whisper",
+            "local_asr:openai-whisper",
+            "local_asr:faster-whisper",
+        ],
         rejected_count,
         sorted(set(rejected_reasons)),
     )
@@ -755,9 +885,7 @@ def resolve_transcript(
     result = local_asr(video, language_hint=asr_language_hint)
     result.attempted_sources = attempted + result.attempted_sources
     result.rejected_segment_count += rejected_count
-    result.quality_reasons = sorted(
-        set(result.quality_reasons) | set(rejected_reasons)
-    )
+    result.quality_reasons = sorted(set(result.quality_reasons) | set(rejected_reasons))
     if provided_warning:
         result.warning = provided_warning + result.warning
     return result
@@ -775,7 +903,11 @@ def _ocr_crop(image: Image.Image, region: str) -> Image.Image:
     return image.crop(boxes.get(region, boxes["full"]))
 
 
-def ocr_image(path: Path, timestamp: float, regions: Sequence[str] = ("right_ui", "node_editor", "timeline")) -> list[dict[str, Any]]:
+def ocr_image(
+    path: Path,
+    timestamp: float,
+    regions: Sequence[str] = ("right_ui", "node_editor", "timeline"),
+) -> list[dict[str, Any]]:
     executable = shutil.which("tesseract")
     if not executable:
         return []
@@ -788,11 +920,23 @@ def ocr_image(path: Path, timestamp: float, regions: Sequence[str] = ("right_ui"
         crop = crop.resize((max(1, crop.width * 2), max(1, crop.height * 2)))
         with tempfile.NamedTemporaryFile(suffix=".png") as handle:
             crop.save(handle.name)
-            command = [executable, handle.name, "stdout", "-l", "chi_sim+eng", "--psm", "6"]
+            command = [
+                executable,
+                handle.name,
+                "stdout",
+                "-l",
+                "chi_sim+eng",
+                "--psm",
+                "6",
+            ]
             try:
                 result = subprocess.run(
-                    command, check=False, text=True, stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL, timeout=15,
+                    command,
+                    check=False,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
                 )
             except subprocess.TimeoutExpired:
                 continue
@@ -800,12 +944,17 @@ def ocr_image(path: Path, timestamp: float, regions: Sequence[str] = ("right_ui"
             if not text and "chi_sim" in " ".join(command):
                 result = subprocess.run(
                     [executable, handle.name, "stdout", "-l", "eng", "--psm", "6"],
-                    check=False, text=True, stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL, timeout=15,
+                    check=False,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
                 )
                 text = " ".join(result.stdout.split())
         if text:
-            observations.append({"timestamp_sec": round(timestamp, 3), "region": region, "text": text})
+            observations.append(
+                {"timestamp_sec": round(timestamp, 3), "region": region, "text": text}
+            )
     return observations
 
 
@@ -841,18 +990,25 @@ def timestamp_label(seconds: float) -> str:
     return f"{whole // 60:02d}:{whole % 60:02d}"
 
 
-def parse_time_range(value: Any, fallback_start: float, fallback_end: float) -> tuple[float, float]:
+def parse_time_range(
+    value: Any, fallback_start: float, fallback_end: float
+) -> tuple[float, float]:
     text = str(value or "")
     matches = re.findall(r"(?:\d+:)?\d{1,2}:\d{2}(?:\.\d+)?|\d+(?:\.\d+)?s", text)
     if matches:
-        values = [_clock_seconds(item[:-1] if item.endswith("s") else item) for item in matches[:2]]
+        values = [
+            _clock_seconds(item[:-1] if item.endswith("s") else item)
+            for item in matches[:2]
+        ]
         if len(values) == 1:
             return values[0], values[0]
         return min(values), max(values)
     return fallback_start, fallback_end
 
 
-def segments_text(segments: Sequence[Mapping[str, Any]], start: float, end: float, limit: int = 5000) -> str:
+def segments_text(
+    segments: Sequence[Mapping[str, Any]], start: float, end: float, limit: int = 5000
+) -> str:
     pieces = []
     for item in segments:
         item_start = float(item.get("start_sec") or 0)
@@ -879,8 +1035,7 @@ def select_coarse_rows(
         return []
     last = len(rows) - 1
     selected_indices = {
-        round(slot * last / max(1, min(3, last)))
-        for slot in range(min(4, len(rows)))
+        round(slot * last / max(1, min(3, last))) for slot in range(min(4, len(rows)))
     }
     if len(selected_indices) > limit:
         selected_indices = set(sorted(selected_indices)[:limit])
@@ -889,9 +1044,7 @@ def select_coarse_rows(
             break
         nearest = min(
             range(len(rows)),
-            key=lambda index: abs(
-                float(rows[index].get("timestamp_sec") or 0) - cue
-            ),
+            key=lambda index: abs(float(rows[index].get("timestamp_sec") or 0) - cue),
         )
         selected_indices.add(nearest)
     for index in sorted(
@@ -962,11 +1115,7 @@ def build_candidate_verification_packages(
         if not step_id:
             raise ExtractionError("verification candidate has no step_id")
         owned = sorted(
-            (
-                item
-                for item in evidence
-                if str(item.get("step_id") or "") == step_id
-            ),
+            (item for item in evidence if str(item.get("step_id") or "") == step_id),
             key=lambda item: (
                 role_order.get(str(item.get("role") or ""), 99),
                 float(item.get("timestamp_sec") or 0),
@@ -1158,7 +1307,9 @@ def parse_sse_chat_response(
                     content_parts.append(piece)
                 elif isinstance(piece, list):
                     for item in piece:
-                        if isinstance(item, Mapping) and isinstance(item.get("text"), str):
+                        if isinstance(item, Mapping) and isinstance(
+                            item.get("text"), str
+                        ):
                             content_parts.append(str(item["text"]))
             finish_reason = choice.get("finish_reason")
             if finish_reason is not None:
@@ -1213,13 +1364,30 @@ def parse_sse_chat_response(
 
 
 class ModelClient:
-    def __init__(self, *, endpoint: str, key: str, model: str, profile: Profile, call_budget: int,
-                 max_output_tokens: int = 10000):
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        key: str,
+        model: str,
+        profile: Profile,
+        call_budget: int,
+        max_output_tokens: int = 10000,
+    ):
         parsed = urllib.parse.urlparse(endpoint)
-        if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
-            raise ExtractionError("BLENDER_PIPELINE_API_ENDPOINT must be credential-free HTTPS")
+        if (
+            parsed.scheme != "https"
+            or not parsed.netloc
+            or parsed.username
+            or parsed.password
+        ):
+            raise ExtractionError(
+                "BLENDER_PIPELINE_API_ENDPOINT must be credential-free HTTPS"
+            )
         if model not in ALLOWED_MODELS:
-            raise ExtractionError("model must be gpt-5.6-sol or explicit fallback gpt-5.5")
+            raise ExtractionError(
+                "model must be gpt-5.6-sol or explicit fallback gpt-5.5"
+            )
         self.endpoint = endpoint
         self.key = key
         self.model = model
@@ -1343,7 +1511,9 @@ def _codex_cli_usage(stdout: str) -> dict[str, int]:
             raise ExtractionError("codex CLI telemetry event is not an object")
         events.append(value)
 
-    def nested_mapping(value: Mapping[str, Any], *keys: str) -> Mapping[str, Any] | None:
+    def nested_mapping(
+        value: Mapping[str, Any], *keys: str
+    ) -> Mapping[str, Any] | None:
         current: Any = value
         for key in keys:
             if not isinstance(current, Mapping):
@@ -1412,7 +1582,9 @@ class CodexCliModelClient:
 
     def __init__(self, *, model: str, profile: Profile, call_budget: int):
         if model not in ALLOWED_MODELS:
-            raise ExtractionError("model must be gpt-5.6-sol or explicit fallback gpt-5.5")
+            raise ExtractionError(
+                "model must be gpt-5.6-sol or explicit fallback gpt-5.5"
+            )
         executable = shutil.which("codex")
         if executable is None:
             raise ExtractionError("codex CLI provider requires the codex executable")
@@ -1433,9 +1605,13 @@ class CodexCliModelClient:
             try:
                 resolved = item.expanduser().resolve(strict=True)
             except OSError as exc:
-                raise ExtractionError(f"evidence image is unavailable: {item.name}") from exc
+                raise ExtractionError(
+                    f"evidence image is unavailable: {item.name}"
+                ) from exc
             if not resolved.is_file():
-                raise ExtractionError(f"evidence image is not a regular file: {item.name}")
+                raise ExtractionError(
+                    f"evidence image is not a regular file: {item.name}"
+                )
             resolved_images.append(resolved)
         image_map = "\n".join(
             f"EVIDENCE_SHEET_{index:03d}: {item.name}"
@@ -1449,7 +1625,9 @@ class CodexCliModelClient:
             + "and no Markdown fencing. The `json_text` value must be a valid "
             + "JSON-encoded string containing the response object requested above."
         )
-        with tempfile.TemporaryDirectory(prefix="video2blender-codex-cli-") as temporary_value:
+        with tempfile.TemporaryDirectory(
+            prefix="video2blender-codex-cli-"
+        ) as temporary_value:
             temporary = Path(temporary_value)
             last_message = temporary / "last_message.json"
             output_schema = temporary / "output_schema.json"
@@ -1513,9 +1691,13 @@ class CodexCliModelClient:
                 )
             usage = _codex_cli_usage(completed.stdout)
             if not last_message.is_file():
-                raise ExtractionError("codex CLI produced no --output-last-message file")
+                raise ExtractionError(
+                    "codex CLI produced no --output-last-message file"
+                )
             if last_message.stat().st_size > 2 * 1024 * 1024:
-                raise ExtractionError("codex CLI final message exceeds the JSON size limit")
+                raise ExtractionError(
+                    "codex CLI final message exceeds the JSON size limit"
+                )
             try:
                 wrapper = parse_json_object(last_message.read_text(encoding="utf-8"))
             except (OSError, UnicodeError) as exc:
@@ -1536,7 +1718,9 @@ class CodexCliModelClient:
 
 
 def coarse_batch_prompt(
-    *, title: str, windows: Sequence[Mapping[str, Any]],
+    *,
+    title: str,
+    windows: Sequence[Mapping[str, Any]],
     max_candidates: int,
 ) -> str:
     compact_windows = []
@@ -1783,11 +1967,15 @@ def normalize_candidates(
     requests = value.get("evidence_requests") or []
     steps: list[dict[str, Any]] = []
     id_map: dict[str, str] = {}
-    raw_step_ids = [
-        str(raw.get("step_id") or "")
-        for raw in raw_steps
-        if isinstance(raw, Mapping) and str(raw.get("step_id") or "")
-    ] if isinstance(raw_steps, list) else []
+    raw_step_ids = (
+        [
+            str(raw.get("step_id") or "")
+            for raw in raw_steps
+            if isinstance(raw, Mapping) and str(raw.get("step_id") or "")
+        ]
+        if isinstance(raw_steps, list)
+        else []
+    )
     duplicate_ids = {
         step_id for step_id, count in Counter(raw_step_ids).items() if count > 1
     }
@@ -1862,8 +2050,7 @@ def normalize_candidates(
     raw_uncertain = value.get("uncertain_items") or []
     uncertain_count = len(raw_uncertain) if isinstance(raw_uncertain, list) else 1
     uncertain: list[Any] = [
-        {"code": "model_reported_uncertainty"}
-        for _index in range(uncertain_count)
+        {"code": "model_reported_uncertainty"} for _index in range(uncertain_count)
     ]
     uncertain.extend(
         {
@@ -1877,7 +2064,11 @@ def normalize_candidates(
 
 def requested_region(value: Any) -> str:
     region = str(value or "full").lower().strip()
-    return region if region in {"full", "right_ui", "node_editor", "timeline", "properties"} else "full"
+    return (
+        region
+        if region in {"full", "right_ui", "node_editor", "timeline", "properties"}
+        else "full"
+    )
 
 
 def candidate_belongs_to_core(
@@ -1935,8 +2126,7 @@ def bounded_dense_scan_times(
     # genuinely later STABLE state can both survive the scan cap.
     for anchor in list(anchors)[:2]:
         priority.extend(
-            clipped(anchor + offset * interval)
-            for offset in (1.0, -1.0, 2.0)
+            clipped(anchor + offset * interval) for offset in (1.0, -1.0, 2.0)
         )
 
     selected: list[float] = []
@@ -1973,9 +2163,7 @@ def _select_dense_action(
 ) -> Mapping[str, Any] | None:
     if not entries:
         return None
-    semantic = [
-        item for item in entries if int(item.get("semantic_score") or 0) > 0
-    ]
+    semantic = [item for item in entries if int(item.get("semantic_score") or 0) > 0]
     if semantic:
         # A visible candidate/object/parameter match outranks timing.  Timing
         # then keeps a persistent node elsewhere in the graph from stealing a
@@ -2002,8 +2190,7 @@ def _select_dense_action(
             - 0.15
             * min(
                 1.0,
-                abs(float(item["timestamp_sec"]) - requested_center)
-                / local_radius,
+                abs(float(item["timestamp_sec"]) - requested_center) / local_radius,
             ),
             -abs(float(item["timestamp_sec"]) - requested_center),
         ),
@@ -2018,9 +2205,7 @@ def _select_dense_pre(
 ) -> Mapping[str, Any] | None:
     action_time = float(action["timestamp_sec"])
     before = [
-        item
-        for item in entries
-        if float(item["timestamp_sec"]) < action_time - 1e-6
+        item for item in entries if float(item["timestamp_sec"]) < action_time - 1e-6
     ]
     if not before:
         return None
@@ -2073,11 +2258,7 @@ def _select_dense_stable(
 
     action_semantic = int(action.get("semantic_score") or 0)
     if action_semantic:
-        continued = [
-            item
-            for item in later
-            if int(item.get("semantic_score") or 0) > 0
-        ]
+        continued = [item for item in later if int(item.get("semantic_score") or 0) > 0]
         if continued:
             later = continued
         else:
@@ -2114,8 +2295,13 @@ def _select_dense_stable(
 
 
 def dense_scan_for_step(
-    *, video: Path, temporary_root: Path, profile: Profile,
-    step: Mapping[str, Any], request: Mapping[str, Any] | None, duration: float,
+    *,
+    video: Path,
+    temporary_root: Path,
+    profile: Profile,
+    step: Mapping[str, Any],
+    request: Mapping[str, Any] | None,
+    duration: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Decode one bounded, candidate-owned scan before choosing evidence.
 
@@ -2339,9 +2525,7 @@ def dense_localization_prompt(
     for attachment_index, package in enumerate(packages):
         step_id = str(package.get("step_id") or "")
         entries = [
-            item
-            for item in package.get("entries") or []
-            if isinstance(item, Mapping)
+            item for item in package.get("entries") or [] if isinstance(item, Mapping)
         ]
         allowed_ids = [str(item.get("scan_id") or "") for item in entries]
         attachment_map.append(
@@ -2357,9 +2541,7 @@ def dense_localization_prompt(
                         if isinstance(value, (int, float, bool))
                         else str(value)[:500]
                     )
-                    for key, value in dict(
-                        package.get("candidate") or {}
-                    ).items()
+                    for key, value in dict(package.get("candidate") or {}).items()
                     if key
                     in {
                         "start_sec",
@@ -2376,9 +2558,9 @@ def dense_localization_prompt(
                     "timestamp_sec": (package.get("request") or {}).get(
                         "timestamp_sec"
                     ),
-                    "reason": str(
-                        (package.get("request") or {}).get("reason") or ""
-                    )[:500],
+                    "reason": str((package.get("request") or {}).get("reason") or "")[
+                        :500
+                    ],
                 },
                 "region": package.get("region"),
                 "frames": [
@@ -2418,7 +2600,9 @@ def assert_dense_package_isolation(
 
     step_ids = [str(package.get("step_id") or "") for package in packages]
     if any(not step_id for step_id in step_ids) or len(set(step_ids)) != len(step_ids):
-        raise ExtractionError("dense localization packages have duplicate or empty step_id")
+        raise ExtractionError(
+            "dense localization packages have duplicate or empty step_id"
+        )
     scan_ids: list[str] = []
     for package in packages:
         owned = [
@@ -2453,9 +2637,7 @@ def merge_dense_localizations(
     issues: list[dict[str, Any]] = []
     for index, row in enumerate(rows):
         if not isinstance(row, Mapping):
-            issues.append(
-                {"code": "malformed_dense_localization", "row_index": index}
-            )
+            issues.append({"code": "malformed_dense_localization", "row_index": index})
             continue
         step_id = str(row.get("step_id") or "").strip()
         if step_id not in by_step:
@@ -2526,7 +2708,9 @@ def materialize_dense_evidence(
     for role, field_name in role_fields:
         entry = entries[validated[field_name]]
         source = Path(str(entry["path"]))
-        if not source.is_file() or sha256_path(source) != str(entry.get("sha256") or ""):
+        if not source.is_file() or sha256_path(source) != str(
+            entry.get("sha256") or ""
+        ):
             raise ExtractionError("dense scan changed after localization")
         image_id = f"IMG-{safe_step_id}-{role.upper()}"
         destination = output_root / "evidence" / "frames" / f"{image_id}.jpg"
@@ -2581,8 +2765,14 @@ def ocr_selected_dense_entries(
 
 
 def dense_evidence_for_step(
-    *, video: Path, output_root: Path, temporary_root: Path, profile: Profile,
-    step: Mapping[str, Any], request: Mapping[str, Any] | None, duration: float,
+    *,
+    video: Path,
+    output_root: Path,
+    temporary_root: Path,
+    profile: Profile,
+    step: Mapping[str, Any],
+    request: Mapping[str, Any] | None,
+    duration: float,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Compatibility wrapper for the explicit no-extra-call downgrade."""
 
@@ -2623,9 +2813,7 @@ def _ocr_term_variants(value: Any) -> set[str]:
     for run in re.findall(r"[\u4e00-\u9fff]{3,}", text):
         terms.update(run[index : index + 2] for index in range(len(run) - 1))
     return {
-        term
-        for term in terms
-        if len(term) >= 2 or any(char.isdigit() for char in term)
+        term for term in terms if len(term) >= 2 or any(char.isdigit() for char in term)
     }
 
 
@@ -2635,26 +2823,18 @@ def _ocr_relevance_scores(
     *,
     request_reason: str = "",
 ) -> tuple[int, int]:
-    text = " ".join(
-        str(item.get("text") or "") for item in observations
-    ).casefold()
+    text = " ".join(str(item.get("text") or "") for item in observations).casefold()
     compact = re.sub(r"\s+", "", text)
 
     def hits(values: Iterable[Any]) -> int:
-        terms = {
-            term
-            for value in values
-            for term in _ocr_term_variants(value)
-        }
+        terms = {term for value in values for term in _ocr_term_variants(value)}
         return sum(1 for term in terms if term in text or term in compact)
 
     parameters = step.get("parameters")
     parameter_items = (
         list(parameters.items()) if isinstance(parameters, Mapping) else []
     )
-    value_hits = hits(
-        value for _key, value in parameter_items if _not_unknown(value)
-    )
+    value_hits = hits(value for _key, value in parameter_items if _not_unknown(value))
     key_hits = hits(key for key, _value in parameter_items)
     object_hits = hits([step.get("object")])
     action_hits = hits([step.get("action")])
@@ -2718,8 +2898,10 @@ def _values_equal(left: Any, right: Any) -> bool:
 
 
 def qgate_step(
-    candidate: Mapping[str, Any], decision: Mapping[str, Any] | None,
-    evidence_by_id: Mapping[str, Mapping[str, Any]], duration: float,
+    candidate: Mapping[str, Any],
+    decision: Mapping[str, Any] | None,
+    evidence_by_id: Mapping[str, Mapping[str, Any]],
+    duration: float,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     fatal_reasons: list[str] = []
     dropped_claim_reasons: list[str] = []
@@ -2730,7 +2912,12 @@ def qgate_step(
             dropped_claim_reasons.append(message)
 
     if not decision or decision.get("verified") is not True:
-        return None, [str((decision or {}).get("reason") or "model verification did not accept the step")]
+        return None, [
+            str(
+                (decision or {}).get("reason")
+                or "model verification did not accept the step"
+            )
+        ]
     accepted = decision.get("accepted")
     if not isinstance(accepted, Mapping):
         return None, ["verified decision contains no structured accepted payload"]
@@ -2740,9 +2927,7 @@ def qgate_step(
         for item in evidence_by_id.values()
         if str(item.get("step_id") or "") == candidate_step_id
     ]
-    evidence_by_role = {
-        str(item.get("role") or ""): item for item in owned_evidence
-    }
+    evidence_by_role = {str(item.get("role") or ""): item for item in owned_evidence}
     if {"pre", "action", "stable"}.issubset(evidence_by_role):
         pre_item = evidence_by_role["pre"]
         action_item = evidence_by_role["action"]
@@ -2754,9 +2939,7 @@ def qgate_step(
             fatal_reasons.append(
                 "evidence roles are not temporally ordered pre < action < stable"
             )
-        if str(action_item.get("sha256") or "") == str(
-            stable_item.get("sha256") or ""
-        ):
+        if str(action_item.get("sha256") or "") == str(stable_item.get("sha256") or ""):
             fatal_reasons.append("action and stable evidence are the same image")
     else:
         fatal_reasons.append("candidate lacks pre/action/stable evidence")
@@ -2791,8 +2974,7 @@ def qgate_step(
         if missing_ids:
             drop_claim(
                 "claim cites nonexistent evidence IDs "
-                f"(claim[{claim_index}]): "
-                + ", ".join(missing_ids)
+                f"(claim[{claim_index}]): " + ", ".join(missing_ids)
             )
             continue
         cross_step_ids = sorted(
@@ -2804,8 +2986,7 @@ def qgate_step(
         if cross_step_ids:
             drop_claim(
                 "claim cites evidence owned by another step "
-                f"(claim[{claim_index}]): "
-                + ", ".join(cross_step_ids)
+                f"(claim[{claim_index}]): " + ", ".join(cross_step_ids)
             )
             continue
         ids = [item for item in raw_ids if item in evidence_by_id]
@@ -2819,10 +3000,11 @@ def qgate_step(
         if "value" not in raw:
             drop_claim(f"claim[{claim_index}] has no value")
             continue
-        if not any(str(evidence_by_id[item].get("role")) in {"action", "stable", "ocr_best"} for item in ids):
-            drop_claim(
-                f"claim[{claim_index}] has no ACTION, STABLE, or OCR evidence"
-            )
+        if not any(
+            str(evidence_by_id[item].get("role")) in {"action", "stable", "ocr_best"}
+            for item in ids
+        ):
+            drop_claim(f"claim[{claim_index}] has no ACTION, STABLE, or OCR evidence")
             continue
         claims.append(
             {
@@ -2835,6 +3017,7 @@ def qgate_step(
                 "evidence_ids": sorted(set(ids)),
             }
         )
+
     def matching_claims(
         kind: str, field_name: str, value: Any, parameter: str = ""
     ) -> list[dict[str, Any]]:
@@ -2892,24 +3075,18 @@ def qgate_step(
             object_name = raw_object_name
             select_claims(object_claims)
         else:
-            drop_claim(
-                "accepted object lacks an exact evidence-bound object claim"
-            )
+            drop_claim("accepted object lacks an exact evidence-bound object claim")
     accepted_parameters = (
         accepted.get("parameters")
         if isinstance(accepted.get("parameters"), Mapping)
         else {}
     )
-    if "parameters" in accepted and not isinstance(
-        accepted.get("parameters"), Mapping
-    ):
+    if "parameters" in accepted and not isinstance(accepted.get("parameters"), Mapping):
         drop_claim("accepted parameters payload is not an object")
     parameters: dict[str, Any] = {}
     for raw_key, value in accepted_parameters.items():
         key = str(raw_key)
-        parameter_claims = matching_claims(
-            "parameter", "parameters", value, key
-        )
+        parameter_claims = matching_claims("parameter", "parameters", value, key)
         if key and _not_unknown(value) and parameter_claims:
             parameters[key] = value
             select_claims(parameter_claims)
@@ -2927,9 +3104,7 @@ def qgate_step(
         "spatial_relation",
     }
     raw_relation_type = str(accepted.get("relation_type") or "").strip()
-    raw_spatial_relation = str(
-        accepted.get("spatial_relation") or ""
-    ).strip()
+    raw_spatial_relation = str(accepted.get("spatial_relation") or "").strip()
     spatial_relation = (
         raw_spatial_relation if _not_unknown(raw_spatial_relation) else ""
     )
@@ -2937,28 +3112,32 @@ def qgate_step(
         [action, spatial_relation]
         + [f"{key}={value}" for key, value in accepted_parameters.items()]
     ).lower()
-    relationship_requested = any(
-        term in connection_text
-        for term in (
-            "连接",
-            "connect",
-            "parent",
-            "父子",
-            "bone",
-            "骨骼",
-            "rig",
-            "绑定",
-            "skin",
-            "蒙皮",
-            "constraint",
-            "约束",
-            "->",
-            "→",
-            "feeds",
-            "linked",
-            "links",
+    relationship_requested = (
+        any(
+            term in connection_text
+            for term in (
+                "连接",
+                "connect",
+                "parent",
+                "父子",
+                "bone",
+                "骨骼",
+                "rig",
+                "绑定",
+                "skin",
+                "蒙皮",
+                "constraint",
+                "约束",
+                "->",
+                "→",
+                "feeds",
+                "linked",
+                "links",
+            )
         )
-    ) or raw_relation_type not in {"", "none"} or bool(raw_spatial_relation)
+        or raw_relation_type not in {"", "none"}
+        or bool(raw_spatial_relation)
+    )
     relation_type = "none"
     if relationship_requested:
         connection_claims = matching_claims(
@@ -2992,18 +3171,14 @@ def qgate_step(
     accepted_optional: dict[str, str] = {}
     for field_name, claim_kind in optional_fields:
         field_value = str(accepted.get(field_name) or "").strip()
-        field_claims = matching_claims(
-            claim_kind, field_name, field_value
-        )
+        field_claims = matching_claims(claim_kind, field_name, field_value)
         if field_value and _not_unknown(field_value) and field_claims:
             accepted_optional[field_name] = field_value
             select_claims(field_claims)
         else:
             accepted_optional[field_name] = ""
             if field_value:
-                drop_claim(
-                    f"accepted {field_name} lacks an exact evidence-bound claim"
-                )
+                drop_claim(f"accepted {field_name} lacks an exact evidence-bound claim")
 
     for claim in claims:
         claim_index = int(claim["_index"])
@@ -3014,11 +3189,7 @@ def qgate_step(
     start = max(0.0, float(candidate.get("start_sec") or 0))
     end = min(duration, max(start, float(candidate.get("end_sec") or start)))
     evidence_ids = sorted(
-        {
-            item
-            for claim in selected_claims
-            for item in claim["evidence_ids"]
-        }
+        {item for claim in selected_claims for item in claim["evidence_ids"]}
     )
     if not evidence_ids:
         fatal_reasons.append("step has no accepted evidence IDs")
@@ -3027,7 +3198,10 @@ def qgate_step(
     step = {
         "step_id": str(candidate.get("step_id") or ""),
         "window_index": int(candidate.get("window_index") or 0),
-        "time_range": str(candidate.get("time_range") or f"{timestamp_label(start)}-{timestamp_label(end)}"),
+        "time_range": str(
+            candidate.get("time_range")
+            or f"{timestamp_label(start)}-{timestamp_label(end)}"
+        ),
         "start_sec": round(start, 3),
         "end_sec": round(end, 3),
         "action": action,
@@ -3050,7 +3224,13 @@ def reconcile_steps(
     *,
     conflicts: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    ordered = sorted((dict(item) for item in steps), key=lambda item: (float(item.get("start_sec") or 0), str(item.get("step_id") or "")))
+    ordered = sorted(
+        (dict(item) for item in steps),
+        key=lambda item: (
+            float(item.get("start_sec") or 0),
+            str(item.get("step_id") or ""),
+        ),
+    )
     output: list[dict[str, Any]] = []
     aliases: dict[str, str] = {}
     for item in ordered:
@@ -3067,7 +3247,9 @@ def reconcile_steps(
             previous_end = float(previous.get("end_sec") or previous_start)
             item_start = float(item.get("start_sec") or 0)
             item_end = float(item.get("end_sec") or item_start)
-            overlaps = item_start <= previous_end + 1.5 and previous_start <= item_end + 1.5
+            overlaps = (
+                item_start <= previous_end + 1.5 and previous_start <= item_end + 1.5
+            )
             objects_compatible = (
                 not item.get("object")
                 or not previous.get("object")
@@ -3080,6 +3262,7 @@ def reconcile_steps(
                 and SequenceMatcher(None, action_key, previous_key).ratio() >= 0.62
             )
             if semantic_duplicate and action_key != previous_key:
+
                 def specificity(step: Mapping[str, Any]) -> tuple[int, int, float]:
                     promoted = len(step.get("parameters") or {})
                     promoted += sum(
@@ -3115,11 +3298,30 @@ def reconcile_steps(
                         }
                     )
                 continue
-            close = abs(float(item.get("start_sec") or 0) - float(previous.get("start_sec") or 0)) <= 1.5
-            if close and action_key == previous_key and item.get("object") == previous.get("object"):
-                previous["end_sec"] = max(float(previous.get("end_sec") or 0), float(item.get("end_sec") or 0))
-                previous["evidence_ids"] = sorted(set(previous.get("evidence_ids") or []) | set(item.get("evidence_ids") or []))
-                previous["claims"] = list(previous.get("claims") or []) + [claim for claim in item.get("claims") or [] if claim not in previous.get("claims", [])]
+            close = (
+                abs(
+                    float(item.get("start_sec") or 0)
+                    - float(previous.get("start_sec") or 0)
+                )
+                <= 1.5
+            )
+            if (
+                close
+                and action_key == previous_key
+                and item.get("object") == previous.get("object")
+            ):
+                previous["end_sec"] = max(
+                    float(previous.get("end_sec") or 0), float(item.get("end_sec") or 0)
+                )
+                previous["evidence_ids"] = sorted(
+                    set(previous.get("evidence_ids") or [])
+                    | set(item.get("evidence_ids") or [])
+                )
+                previous["claims"] = list(previous.get("claims") or []) + [
+                    claim
+                    for claim in item.get("claims") or []
+                    if claim not in previous.get("claims", [])
+                ]
                 for key, value in (item.get("parameters") or {}).items():
                     if not _not_unknown(value):
                         continue
@@ -3185,8 +3387,21 @@ def reconcile_steps(
     return output
 
 
-def tutorial_markdown(title: str, source_url: str, steps: Sequence[Mapping[str, Any]], evidence_by_id: Mapping[str, Mapping[str, Any]]) -> str:
-    lines = [f"# {title}", "", f"- 原视频：{source_url or '未记录'}", "- 本教程只包含通过 Claim Q-Gate 的操作；未证实内容见 `uncertain_items.json`。", "", "## 图文步骤", ""]
+def tutorial_markdown(
+    title: str,
+    source_url: str,
+    steps: Sequence[Mapping[str, Any]],
+    evidence_by_id: Mapping[str, Mapping[str, Any]],
+) -> str:
+    lines = [
+        f"# {title}",
+        "",
+        f"- 原视频：{source_url or '未记录'}",
+        "- 本教程只包含通过 Claim Q-Gate 的操作；未证实内容见 `uncertain_items.json`。",
+        "",
+        "## 图文步骤",
+        "",
+    ]
     if not steps:
         lines.extend(["没有步骤通过 Claim Q-Gate。", ""])
     for index, step in enumerate(steps, 1):
@@ -3200,10 +3415,15 @@ def tutorial_markdown(title: str, source_url: str, steps: Sequence[Mapping[str, 
         )
         parameters = step.get("parameters") or {}
         if parameters:
-            lines.append("- 参数：" + "；".join(f"`{key}` = `{value}`" for key, value in parameters.items()))
+            lines.append(
+                "- 参数："
+                + "；".join(f"`{key}` = `{value}`" for key, value in parameters.items())
+            )
         for label, key in (
-            ("视觉结果", "visual_result"), ("材质/颜色/纹理", "material_color"),
-            ("空间关系", "spatial_relation"), ("表面细节", "surface_detail"),
+            ("视觉结果", "visual_result"),
+            ("材质/颜色/纹理", "material_color"),
+            ("空间关系", "spatial_relation"),
+            ("表面细节", "surface_detail"),
             ("代码复现约束", "implementation_notes"),
         ):
             value = str(step.get(key) or "").strip()
@@ -3214,41 +3434,108 @@ def tutorial_markdown(title: str, source_url: str, steps: Sequence[Mapping[str, 
             item = evidence_by_id.get(str(evidence_id))
             if not item:
                 continue
-            lines.append(f"![{evidence_id} {item.get('role')} {item.get('timestamp_sec')}s]({item.get('path')})")
+            lines.append(
+                f"![{evidence_id} {item.get('role')} {item.get('timestamp_sec')}s]({item.get('path')})"
+            )
         lines.append("")
-    lines.extend(["## 使用边界", "", "`tutorial.md` 与 `steps_verified.json` 是同一组已验证步骤的两种视图。候选步骤、OCR 文本或截图不能独立授权额外操作；参数冲突或缺少修改后稳定证据时必须回到视频复核。", ""])
+    lines.extend(
+        [
+            "## 使用边界",
+            "",
+            "`tutorial.md` 与 `steps_verified.json` 是同一组已验证步骤的两种视图。候选步骤、OCR 文本或截图不能独立授权额外操作；参数冲突或缺少修改后稳定证据时必须回到视频复核。",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
-def render_html(output_root: Path, title: str, source_url: str, steps: Sequence[Mapping[str, Any]], evidence_by_id: Mapping[str, Mapping[str, Any]]) -> None:
+def render_html(
+    output_root: Path,
+    title: str,
+    source_url: str,
+    steps: Sequence[Mapping[str, Any]],
+    evidence_by_id: Mapping[str, Mapping[str, Any]],
+) -> None:
     cards = []
     for index, step in enumerate(steps, 1):
         images = []
         for evidence_id in step.get("evidence_ids") or []:
             item = evidence_by_id.get(str(evidence_id))
             if item:
-                images.append(f'<figure><img src="{html.escape(str(item.get("path")))}" alt="{html.escape(str(evidence_id))}"><figcaption>{html.escape(str(evidence_id))} · {float(item.get("timestamp_sec") or 0):.2f}s · {html.escape(str(item.get("role")))}</figcaption></figure>')
-        parameters = "；".join(f"{key}={value}" for key, value in (step.get("parameters") or {}).items())
-        cards.append(f'<section><p class="time">{html.escape(str(step.get("time_range") or ""))}</p><h2>{index}. {html.escape(str(step.get("action") or ""))}</h2><p><strong>对象：</strong>{html.escape(str(step.get("object") or ""))}</p><p><strong>参数：</strong>{html.escape(parameters or "无已验证精确参数")}</p><p>{html.escape(str(step.get("visual_result") or ""))}</p><div class="images">{"".join(images)}</div></section>')
+                images.append(
+                    f'<figure><img src="{html.escape(str(item.get("path")))}" alt="{html.escape(str(evidence_id))}"><figcaption>{html.escape(str(evidence_id))} · {float(item.get("timestamp_sec") or 0):.2f}s · {html.escape(str(item.get("role")))}</figcaption></figure>'
+                )
+        parameters = "；".join(
+            f"{key}={value}" for key, value in (step.get("parameters") or {}).items()
+        )
+        cards.append(
+            f'<section><p class="time">{html.escape(str(step.get("time_range") or ""))}</p><h2>{index}. {html.escape(str(step.get("action") or ""))}</h2><p><strong>对象：</strong>{html.escape(str(step.get("object") or ""))}</p><p><strong>参数：</strong>{html.escape(parameters or "无已验证精确参数")}</p><p>{html.escape(str(step.get("visual_result") or ""))}</p><div class="images">{"".join(images)}</div></section>'
+        )
     document = f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><style>body{{margin:0;background:#111318;color:#eef1f7;font:16px/1.65 system-ui}}main{{max-width:1100px;margin:auto;padding:48px 24px}}a{{color:#9fc2ff}}section{{margin:28px 0;padding:24px;background:#1b1f28;border:1px solid #343b49;border-radius:16px}}.time,figcaption{{color:#a7afbd}}.images{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}}figure{{margin:0}}img{{width:100%;height:220px;object-fit:contain;background:#08090c;border-radius:10px}}h1{{font-size:clamp(36px,6vw,72px)}}h2{{margin-top:4px}}</style></head><body><main><h1>{html.escape(title)}</h1><p>原视频：<a href="{html.escape(source_url)}">{html.escape(source_url or "未记录")}</a></p><p>显示层由已验证步骤确定；操作真值仍为 tutorial.md 与 steps_verified.json。</p>{"".join(cards)}</main></body></html>'''
     atomic_text(output_root / "illustrated_tutorial.html", document)
 
 
 def tutorial_visual_contract(steps: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     contracts = {
-        "visible_objects": sorted({str(item.get("object")) for item in steps if str(item.get("object") or "").strip()}),
-        "materials": sorted({str(item.get("material_color")) for item in steps if str(item.get("material_color") or "").strip()}),
-        "surface_details": sorted({str(item.get("surface_detail")) for item in steps if str(item.get("surface_detail") or "").strip()}),
-        "spatial_layout": sorted({str(item.get("spatial_relation")) for item in steps if str(item.get("spatial_relation") or "").strip()}),
-        "final_constraints": sorted({str(item.get("visual_result")) for item in steps if str(item.get("visual_result") or "").strip()}),
-        "do_not_omit": sorted({str(item.get("implementation_notes")) for item in steps if str(item.get("implementation_notes") or "").strip()}),
+        "visible_objects": sorted(
+            {
+                str(item.get("object"))
+                for item in steps
+                if str(item.get("object") or "").strip()
+            }
+        ),
+        "materials": sorted(
+            {
+                str(item.get("material_color"))
+                for item in steps
+                if str(item.get("material_color") or "").strip()
+            }
+        ),
+        "surface_details": sorted(
+            {
+                str(item.get("surface_detail"))
+                for item in steps
+                if str(item.get("surface_detail") or "").strip()
+            }
+        ),
+        "spatial_layout": sorted(
+            {
+                str(item.get("spatial_relation"))
+                for item in steps
+                if str(item.get("spatial_relation") or "").strip()
+            }
+        ),
+        "final_constraints": sorted(
+            {
+                str(item.get("visual_result"))
+                for item in steps
+                if str(item.get("visual_result") or "").strip()
+            }
+        ),
+        "do_not_omit": sorted(
+            {
+                str(item.get("implementation_notes"))
+                for item in steps
+                if str(item.get("implementation_notes") or "").strip()
+            }
+        ),
     }
     field_hits = {
-        "visual_result": sum(bool(str(item.get("visual_result") or "").strip()) for item in steps),
-        "material_color": sum(bool(str(item.get("material_color") or "").strip()) for item in steps),
-        "spatial_relation": sum(bool(str(item.get("spatial_relation") or "").strip()) for item in steps),
-        "surface_detail": sum(bool(str(item.get("surface_detail") or "").strip()) for item in steps),
-        "implementation_notes": sum(bool(str(item.get("implementation_notes") or "").strip()) for item in steps),
+        "visual_result": sum(
+            bool(str(item.get("visual_result") or "").strip()) for item in steps
+        ),
+        "material_color": sum(
+            bool(str(item.get("material_color") or "").strip()) for item in steps
+        ),
+        "spatial_relation": sum(
+            bool(str(item.get("spatial_relation") or "").strip()) for item in steps
+        ),
+        "surface_detail": sum(
+            bool(str(item.get("surface_detail") or "").strip()) for item in steps
+        ),
+        "implementation_notes": sum(
+            bool(str(item.get("implementation_notes") or "").strip()) for item in steps
+        ),
     }
     return {
         "contracts": [{"window_index": 0, **contracts}],
@@ -3256,7 +3543,8 @@ def tutorial_visual_contract(steps: Sequence[Mapping[str, Any]]) -> dict[str, An
             "step_count": len(steps),
             "field_hits": field_hits,
             "contract_items": sum(len(value) for value in contracts.values()),
-            "has_visual_text_contract": bool(steps) and sum(len(value) for value in contracts.values()) >= 4,
+            "has_visual_text_contract": bool(steps)
+            and sum(len(value) for value in contracts.values()) >= 4,
         },
     }
 
@@ -3314,8 +3602,10 @@ def coarse_analysis_bounds(
 
 
 def _maximum_windows_for_budget(
-    call_budget: int, verification_group_size: int,
-    coarse_group_size: int = 1, localization_group_size: int = 1,
+    call_budget: int,
+    verification_group_size: int,
+    coarse_group_size: int = 1,
+    localization_group_size: int = 1,
 ) -> int:
     # Keep one unused call as headroom for a provider retry decision made by a
     # human/operator. The extractor itself never automatically retries an
@@ -3395,7 +3685,19 @@ def profile_candidate_limit(profile: Profile) -> int:
     return {"economy": 2, "balanced": 6, "forensic": 8}[profile.name]
 
 
-def extraction_plan(*, title: str, profile: Profile, model: str, video_file: Path | None, video_url: str | None, output_dir: Path, render_html_enabled: bool, asr_language_hint: str | None = None, provider: str = "api", fallback_reason: str = "") -> dict[str, Any]:
+def extraction_plan(
+    *,
+    title: str,
+    profile: Profile,
+    model: str,
+    video_file: Path | None,
+    video_url: str | None,
+    output_dir: Path,
+    render_html_enabled: bool,
+    asr_language_hint: str | None = None,
+    provider: str = "api",
+    fallback_reason: str = "",
+) -> dict[str, Any]:
     if provider not in ALLOWED_PROVIDERS:
         raise ExtractionError("provider must be api or codex-cli")
     fallback_reason = validate_model_fallback(model, fallback_reason)
@@ -3406,7 +3708,10 @@ def extraction_plan(*, title: str, profile: Profile, model: str, video_file: Pat
         "model": model,
         "provider": provider,
         "fallback_reason": fallback_reason,
-        "input": {"kind": "local_file" if video_file else "video_url", "value": str(video_file) if video_file else validate_url(str(video_url))},
+        "input": {
+            "kind": "local_file" if video_file else "video_url",
+            "value": str(video_file) if video_file else validate_url(str(video_url)),
+        },
         "output_dir": str(output_dir),
         "render_html": render_html_enabled,
         "asr_language": asr_language_hint or "auto",
@@ -3415,13 +3720,23 @@ def extraction_plan(*, title: str, profile: Profile, model: str, video_file: Pat
 
 
 def extract_tutorial(
-    *, video_file: Path | None, video_url: str | None, title: str,
-    output_dir: Path, profile_name: str, model: str, transcript: Path | None,
-    render_html_enabled: bool, endpoint: str = "", secret_file: Path | None = None,
-    source_url: str = "", requested_windows: int | None = None,
+    *,
+    video_file: Path | None,
+    video_url: str | None,
+    title: str,
+    output_dir: Path,
+    profile_name: str,
+    model: str,
+    transcript: Path | None,
+    render_html_enabled: bool,
+    endpoint: str = "",
+    secret_file: Path | None = None,
+    source_url: str = "",
+    requested_windows: int | None = None,
     provided_transcript_only: bool = False,
     asr_language_hint: str | None = None,
-    provider: str = "api", fallback_reason: str = "",
+    provider: str = "api",
+    fallback_reason: str = "",
 ) -> dict[str, Any]:
     if profile_name not in PROFILES:
         raise ExtractionError(f"unknown profile: {profile_name}")
@@ -3452,12 +3767,25 @@ def extract_tutorial(
     target_root = output_dir.expanduser().resolve()
     remove_appledouble_metadata(target_root)
     if target_root.exists() and any(target_root.iterdir()):
-        allowed = {"source.info.json", "target_reference.png", "final_reference.png", "source.mp4", "reproduction_run_manifest.json"}
-        unexpected = [path.name for path in target_root.iterdir() if path.name not in allowed]
+        allowed = {
+            "source.info.json",
+            "target_reference.png",
+            "final_reference.png",
+            "source.mp4",
+            "reproduction_run_manifest.json",
+        }
+        unexpected = [
+            path.name for path in target_root.iterdir() if path.name not in allowed
+        ]
         if unexpected:
-            raise ExtractionError("output directory is not empty; refusing to mix tutorial runs: " + ", ".join(sorted(unexpected)[:8]))
+            raise ExtractionError(
+                "output directory is not empty; refusing to mix tutorial runs: "
+                + ", ".join(sorted(unexpected)[:8])
+            )
     warnings: list[str] = []
-    with tempfile.TemporaryDirectory(prefix="video2blender-tutorial-") as temporary_value:
+    with tempfile.TemporaryDirectory(
+        prefix="video2blender-tutorial-"
+    ) as temporary_value:
         temporary = Path(temporary_value)
         # Build the complete package in a private staging directory. Failed
         # provider calls or validators therefore leave no half-built run that
@@ -3495,7 +3823,9 @@ def extract_tutorial(
         )
         if transcript_result.warning:
             warnings.append(transcript_result.warning)
-        atomic_jsonl(output_root / "transcript" / "segments.jsonl", transcript_result.segments)
+        atomic_jsonl(
+            output_root / "transcript" / "segments.jsonl", transcript_result.segments
+        )
         atomic_json(
             output_root / "transcript" / "source.json",
             {
@@ -3511,7 +3841,9 @@ def extract_tutorial(
             },
         )
 
-        call_budget = profile.calls_per_ten_minutes * max(1, math.ceil(duration / 600.0))
+        call_budget = profile.calls_per_ten_minutes * max(
+            1, math.ceil(duration / 600.0)
+        )
         client.call_budget = call_budget
         verification_group_size = verification_batch_size(profile)
         coarse_group_size = coarse_batch_size(profile)
@@ -3530,11 +3862,17 @@ def extract_tutorial(
         ocr_rows: list[dict[str, Any]] = []
         coarse_ocr_cache: dict[float, list[dict[str, Any]]] = {}
         previous: Path | None = None
-        for index, timestamp in enumerate(frange(0.0, duration, profile.coarse_interval)):
+        for index, timestamp in enumerate(
+            frange(0.0, duration, profile.coarse_interval)
+        ):
             frame = coarse_root / f"coarse_{index:05d}.jpg"
             extract_frame(video, timestamp, frame, profile.image_max_side)
             coarse_rows.append(
-                {"timestamp_sec": timestamp, "path": frame, "change_score": image_change_score(previous, frame)}
+                {
+                    "timestamp_sec": timestamp,
+                    "path": frame,
+                    "change_score": image_change_score(previous, frame),
+                }
             )
             previous = frame
         cue_times = action_cue_timestamps(transcript_result.segments)
@@ -3569,9 +3907,7 @@ def extract_tutorial(
                 for probe_offset in (1.0, 8.0, 13.0)
             ]
             if analysis_end > end:
-                probe_anchors.append(
-                    min(analysis_end, end + min(4.0, context_seconds))
-                )
+                probe_anchors.append(min(analysis_end, end + min(4.0, context_seconds)))
             for anchor in probe_anchors:
                 if not rows:
                     break
@@ -3585,13 +3921,9 @@ def extract_tutorial(
                 ):
                     mandatory.append(nearest)
             mandatory = list(
-                {
-                    float(item["timestamp_sec"]): item for item in mandatory
-                }.values()
+                {float(item["timestamp_sec"]): item for item in mandatory}.values()
             )
-            remaining = max(
-                1, profile.coarse_frames_per_window - len(mandatory)
-            )
+            remaining = max(1, profile.coarse_frames_per_window - len(mandatory))
             selected = select_coarse_rows(
                 rows,
                 cue_times=window_cues,
@@ -3604,12 +3936,8 @@ def extract_tutorial(
                 }.values(),
                 key=lambda item: float(item["timestamp_sec"]),
             )[: profile.coarse_frames_per_window]
-            ocr_frame_limit = {"economy": 4, "balanced": 6, "forensic": 8}[
-                profile.name
-            ]
-            mandatory_times = {
-                float(item["timestamp_sec"]) for item in mandatory
-            }
+            ocr_frame_limit = {"economy": 4, "balanced": 6, "forensic": 8}[profile.name]
+            mandatory_times = {float(item["timestamp_sec"]) for item in mandatory}
             ocr_selected = list(mandatory)
             ocr_selected.extend(
                 item
@@ -3622,9 +3950,7 @@ def extract_tutorial(
             )
             ocr_selected = ocr_selected[:ocr_frame_limit]
             selected_indices = {
-                index
-                for index, item in enumerate(rows)
-                if item in ocr_selected
+                index for index, item in enumerate(rows) if item in ocr_selected
             }
             ocr_indices = sorted(selected_indices)
             window_ocr: list[dict[str, Any]] = []
@@ -3637,9 +3963,14 @@ def extract_tutorial(
                     )
                     ocr_rows.extend(coarse_ocr_cache[timestamp])
                 window_ocr.extend(coarse_ocr_cache[timestamp])
-            sheet = output_root / "evidence" / "coarse" / f"window_{window_index:03d}.jpg"
+            sheet = (
+                output_root / "evidence" / "coarse" / f"window_{window_index:03d}.jpg"
+            )
             make_contact_sheet(
-                [(f"COARSE_{float(item['timestamp_sec']):.2f}s", Path(item["path"])) for item in selected],
+                [
+                    (f"COARSE_{float(item['timestamp_sec']):.2f}s", Path(item["path"]))
+                    for item in selected
+                ],
                 sheet,
             )
             transcript_text = segments_text(
@@ -3706,9 +4037,7 @@ def extract_tutorial(
                 for candidate in window_candidates:
                     core_start = float(work["start_sec"])
                     core_end = float(work["end_sec"])
-                    if not candidate_belongs_to_core(
-                        candidate, core_start, core_end
-                    ):
+                    if not candidate_belongs_to_core(candidate, core_start, core_end):
                         uncertain.append(
                             {
                                 "stage": "candidate_selection",
@@ -3829,9 +4158,7 @@ def extract_tutorial(
             else:
                 for package in window_packages:
                     step_id = str(package.get("step_id") or "")
-                    selection = heuristic_dense_localization(
-                        package, profile=profile
-                    )
+                    selection = heuristic_dense_localization(package, profile=profile)
                     if selection is None:
                         uncertain.append(
                             {
@@ -3849,9 +4176,7 @@ def extract_tutorial(
                 selection = selections.get(step_id)
                 if selection is None:
                     continue
-                ocr_rows.extend(
-                    ocr_selected_dense_entries(package, selection)
-                )
+                ocr_rows.extend(ocr_selected_dense_entries(package, selection))
                 evidence_records.extend(
                     materialize_dense_evidence(
                         package=package,
@@ -3893,9 +4218,7 @@ def extract_tutorial(
                     "end_sec": end,
                     "candidates": window_candidates,
                     "evidence": window_evidence,
-                    "transcript": segments_text(
-                        transcript_result.segments, start, end
-                    ),
+                    "transcript": segments_text(transcript_result.segments, start, end),
                     "candidate_packages": candidate_packages,
                 }
             )
@@ -3904,13 +4227,10 @@ def extract_tutorial(
         for offset in range(0, len(verification_work), verification_group_size):
             group = verification_work[offset : offset + verification_group_size]
             group_evidence_packages = [
-                package
-                for item in group
-                for package in item["candidate_packages"]
+                package for item in group for package in item["candidate_packages"]
             ]
             mapped_step_ids = {
-                str(package.get("step_id") or "")
-                for package in group_evidence_packages
+                str(package.get("step_id") or "") for package in group_evidence_packages
             }
             unmapped_candidates = [
                 candidate
@@ -3993,7 +4313,9 @@ def extract_tutorial(
         candidate_receipts: list[dict[str, Any]] = []
         for candidate in candidates:
             step_id = str(candidate.get("step_id") or "")
-            accepted_step, reasons = qgate_step(candidate, decisions.get(step_id), evidence_by_id, duration)
+            accepted_step, reasons = qgate_step(
+                candidate, decisions.get(step_id), evidence_by_id, duration
+            )
             gate_status = (
                 "uncertain"
                 if accepted_step is None
@@ -4019,7 +4341,9 @@ def extract_tutorial(
                     for reason in reasons
                 )
             else:
-                uncertain.append({"stage": "qgate", "step_id": step_id, "detail": reasons})
+                uncertain.append(
+                    {"stage": "qgate", "step_id": step_id, "detail": reasons}
+                )
         reconciliation_conflicts: list[dict[str, Any]] = []
         verified = reconcile_steps(accepted, conflicts=reconciliation_conflicts)
         uncertain.extend(reconciliation_conflicts)
@@ -4028,8 +4352,7 @@ def extract_tutorial(
         # that prove them; the additional frames preserve auditable context.
         for step in verified:
             claimed_ids = {
-                str(evidence_id)
-                for evidence_id in step.get("evidence_ids") or []
+                str(evidence_id) for evidence_id in step.get("evidence_ids") or []
             }
             source_step_ids = {
                 str(evidence_by_id[evidence_id].get("step_id") or "")
@@ -4052,21 +4375,45 @@ def extract_tutorial(
             warnings.append(
                 f"{len(uncertain)} candidate or claim issue(s) remain outside verified steps."
             )
-        referenced_ids = {str(evidence_id) for step in verified for evidence_id in step.get("evidence_ids") or []}
-        evidence_records = [item for item in evidence_records if str(item["image_id"]) in referenced_ids]
+        referenced_ids = {
+            str(evidence_id)
+            for step in verified
+            for evidence_id in step.get("evidence_ids") or []
+        }
+        evidence_records = [
+            item for item in evidence_records if str(item["image_id"]) in referenced_ids
+        ]
         evidence_by_id = {str(item["image_id"]): item for item in evidence_records}
         for path in (output_root / "evidence" / "frames").glob("*"):
             if path.is_file() and path.stem not in referenced_ids:
                 path.unlink()
-        atomic_json(output_root / "evidence" / "index.json", {"schema": "video2blender-tutorial-evidence.v2", "images": evidence_records})
+        atomic_json(
+            output_root / "evidence" / "index.json",
+            {
+                "schema": "video2blender-tutorial-evidence.v2",
+                "images": evidence_records,
+            },
+        )
         atomic_jsonl(output_root / "ocr" / "observations.jsonl", ocr_rows)
-        atomic_json(output_root / "steps_verified.json", {"schema": SCHEMA_STEPS, "steps": verified})
-        atomic_json(output_root / "steps_candidates.json", {"schema": SCHEMA_CANDIDATES, "steps": candidate_receipts})
-        atomic_json(output_root / "uncertain_items.json", {"schema": "video2blender-tutorial-uncertain.v2", "items": uncertain})
+        atomic_json(
+            output_root / "steps_verified.json",
+            {"schema": SCHEMA_STEPS, "steps": verified},
+        )
+        atomic_json(
+            output_root / "steps_candidates.json",
+            {"schema": SCHEMA_CANDIDATES, "steps": candidate_receipts},
+        )
+        atomic_json(
+            output_root / "uncertain_items.json",
+            {"schema": "video2blender-tutorial-uncertain.v2", "items": uncertain},
+        )
         markdown = tutorial_markdown(title, source_url, verified, evidence_by_id)
         atomic_text(output_root / "tutorial.md", markdown)
         atomic_text(output_root / "tutorial_path_refs.md", markdown)
-        atomic_json(output_root / "tutorial_visual_contract.json", tutorial_visual_contract(verified))
+        atomic_json(
+            output_root / "tutorial_visual_contract.json",
+            tutorial_visual_contract(verified),
+        )
         atomic_json(output_root / "rich_evidence" / "windows.json", rich_windows)
         if render_html_enabled:
             render_html(output_root, title, source_url, verified, evidence_by_id)
@@ -4079,7 +4426,12 @@ def extract_tutorial(
             "model": model,
             "provider": provider,
             "fallback_reason": fallback_reason,
-            "source": {"kind": source_kind, "url": source_url, "sha256": source_hash, "duration_seconds": round(duration, 6)},
+            "source": {
+                "kind": source_kind,
+                "url": source_url,
+                "sha256": source_hash,
+                "duration_seconds": round(duration, 6),
+            },
             "transcript": {
                 "status": transcript_result.status,
                 "source": transcript_result.source,

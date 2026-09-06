@@ -13,6 +13,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import model_direct_generation_contracts as contracts
 import blender_version_registry as version_registry
+import run_video_strict_replay as strict_replay
 from video_replay_animation_contract import (
     effective_route,
     motion_plan_has_verified_time_animation,
@@ -21,6 +22,46 @@ from video_replay_paid_api import normalize_chat_completions_endpoint
 
 
 class GenerationContractTests(unittest.TestCase):
+    def test_image_texture_extension_literal_writes_are_allowed(self) -> None:
+        for value in ("REPEAT", "EXTEND", "CLIP", "MIRROR"):
+            for assignment in (
+                f"texture.extension = {value!r}",
+                f"texture.extension: str = {value!r}",
+            ):
+                with self.subTest(value=value, assignment=assignment):
+                    strict_replay.validate_generated_code_safety(
+                        'texture = nodes.new("ShaderNodeTexImage")\n' + assignment
+                    )
+        strict_replay.validate_generated_code_safety(
+            'texture = nodes.new(type="ShaderNodeTexImage")\n'
+            'image_alias = texture\nimage_alias.extension = "REPEAT"\n'
+        )
+
+    def test_texture_extension_exception_does_not_open_extension_namespaces(
+        self,
+    ) -> None:
+        prefix = 'texture = nodes.new("ShaderNodeTexImage")\n'
+        rejected = (
+            'texture.extension = "INSTALL"',
+            "texture.extension = selected_enum",
+            'texture.extension += "REPEAT"',
+            "value = texture.extension",
+            "texture.extension()",
+            'getattr(texture, "extension")',
+            'setattr(texture, "extension", "REPEAT")',
+            'texture = other_node\ntexture.extension = "REPEAT"',
+            'texture = bpy.ops\ntexture.extension = "REPEAT"',
+            'texture = bpy\ntexture.extension = "REPEAT"',
+            "bpy.ops.extension.package_install()",
+            "ops = bpy.ops\nops.extension.package_install()",
+            "extension = bpy.ops.extension\nextension.package_install()",
+            'bpy.ops.extension = "REPEAT"',
+        )
+        for source in rejected:
+            with self.subTest(source=source):
+                with self.assertRaises(strict_replay.GeneratedCodeSafetyError):
+                    strict_replay.validate_generated_code_safety(prefix + source)
+
     def test_generated_source_accepts_blender_and_rejects_io(self) -> None:
         contracts.audit_generated_python_source(
             "import bpy\nbpy.ops.mesh.primitive_cube_add()\n"

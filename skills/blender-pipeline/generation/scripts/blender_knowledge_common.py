@@ -34,6 +34,8 @@ COLLECTION_NAME = os.environ.get(
 EMBED_MODEL = os.environ.get(
     "BLENDER_KNOWLEDGE_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
 )
+ADMISSION_SCHEMA = "blender-knowledge-admission.v1"
+SUCCESS_OUTCOMES = {"accepted", "pass", "qa_passed"}
 
 
 class KnowledgeManifestError(RuntimeError):
@@ -489,11 +491,70 @@ def default_review_status(source_type: str, text: str, source_path: str = "") ->
     return "candidate"
 
 
+def active_knowledge_eligible(row: dict[str, Any]) -> bool:
+    """Admission is structured provenance, never a favorable word in the text."""
+
+    extra = row.get("extra") or {}
+    if not isinstance(extra, dict):
+        return False
+    admission = extra.get("admission") or {}
+    if not isinstance(admission, dict) or admission.get("schema") != ADMISSION_SCHEMA:
+        return False
+    if not row.get("source_hash") or admission.get("source_hash") != row["source_hash"]:
+        return False
+    body = row.get("text")
+    if isinstance(body, str) and sha256_text(body) != row["source_hash"]:
+        return False
+    if row.get("review_status") == "curated":
+        return bool(
+            row.get("source_type") == "skill"
+            and admission.get("kind") == "curated_guidance"
+            and admission.get("provenance") == "packaged_manifest"
+        )
+    if row.get("review_status") != "reviewed":
+        return False
+    decision = admission.get("promotion_decision") or {}
+    scope = admission.get("scope") or {}
+    if not isinstance(decision, dict) or not isinstance(scope, dict):
+        return False
+    assets = decision.get("candidate_asset_ids") or []
+    holdout = decision.get("accepted_holdout_asset_ids") or []
+    if not isinstance(assets, list) or not isinstance(holdout, list):
+        return False
+    if any(not isinstance(value, str) or not value for value in assets + holdout):
+        return False
+    proof_hash = decision.get("evidence_sha256")
+    core = {
+        key: value
+        for key, value in decision.items()
+        if key not in {"eligible_for_reviewed", "evidence_sha256"}
+    }
+    if proof_hash != sha256_text(
+        json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    ):
+        return False
+    return bool(
+        admission.get("kind") == "reviewed_success"
+        and extra.get("outcome") in SUCCESS_OUTCOMES
+        and decision.get("eligible_for_reviewed") is True
+        and not decision.get("blockers")
+        and len(set(assets)) >= 5
+        and holdout
+        and not set(assets).intersection(holdout)
+        and bool(decision.get("candidate_rule_id"))
+        and decision.get("candidate_rule_id") == extra.get("candidate_rule_id")
+        and all(
+            str(scope.get(key) or "").strip()
+            for key in ("route", "asset_family", "blender_version")
+        )
+    )
+
+
 def infer_knowledge_type(text: str, source_type: str) -> str:
     lower = text.lower()
     if source_type == "paper":
         return "semantic"
-    if any(
+    if source_type == "run_artifact" and any(
         word in lower
         for word in ["failure", "failed", "修复", "失败", "regression", "case"]
     ):
@@ -565,16 +626,51 @@ def make_chunk(
     )
 
 
-def split_markdown_sections(path: Path, max_chars: int = 2200) -> list[tuple[str, str]]:
-    text = path.read_text(encoding="utf-8", errors="ignore")
-    matches = list(re.finditer(r"^(#{1,4})\s+(.+)$", text, flags=re.M))
+def split_markdown_text(
+    text: str, *, fallback_title: str, max_chars: int = 2200
+) -> list[tuple[str, str]]:
+    if max_chars < 1:
+        raise ValueError("max_chars must be positive")
+    matches = []
+    fence_character = ""
+    fence_length = 0
+    for match in re.finditer(r"^.*$", text, flags=re.M):
+        line = match.group(0)
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence:
+            token, tail = fence.groups()
+            if not fence_character:
+                fence_character, fence_length = token[0], len(token)
+            elif (
+                token[0] == fence_character
+                and len(token) >= fence_length
+                and not tail.strip()
+            ):
+                fence_character = ""
+            continue
+        if not fence_character:
+            heading = re.match(r"^(#{1,4})\s+(.+)$", line)
+            if heading:
+                matches.append((match.start(), heading.group(2).strip()))
     if not matches:
-        return [(path.name, text[:max_chars])]
+        return [
+            (fallback_title + (f" part {index + 1}" if index else ""), part)
+            for index, part in enumerate(split_long_text(text, max_chars=max_chars))
+        ]
     sections: list[tuple[str, str]] = []
-    for idx, match in enumerate(matches):
-        title = match.group(2).strip()
-        start = match.start()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+    preamble = text[: matches[0][0]].strip()
+    if preamble:
+        sections.extend(
+            split_markdown_text(
+                preamble, fallback_title=fallback_title, max_chars=max_chars
+            )
+        )
+    title_occurrences: dict[str, int] = {}
+    for idx, (start, title) in enumerate(matches):
+        title_occurrences[title] = title_occurrences.get(title, 0) + 1
+        if title_occurrences[title] > 1:
+            title = f"{title} occurrence {title_occurrences[title]}"
+        end = matches[idx + 1][0] if idx + 1 < len(matches) else len(text)
         body = text[start:end].strip()
         for part_idx, part in enumerate(split_long_text(body, max_chars=max_chars)):
             suffix = f" part {part_idx + 1}" if part_idx else ""
@@ -582,7 +678,17 @@ def split_markdown_sections(path: Path, max_chars: int = 2200) -> list[tuple[str
     return sections
 
 
+def split_markdown_sections(path: Path, max_chars: int = 2200) -> list[tuple[str, str]]:
+    return split_markdown_text(
+        path.read_text(encoding="utf-8", errors="strict"),
+        fallback_title=path.name,
+        max_chars=max_chars,
+    )
+
+
 def split_long_text(text: str, max_chars: int = 2200) -> list[str]:
+    if max_chars < 1:
+        raise ValueError("max_chars must be positive")
     text = text.strip()
     if len(text) <= max_chars:
         return [text]
@@ -590,6 +696,17 @@ def split_long_text(text: str, max_chars: int = 2200) -> list[str]:
     current: list[str] = []
     current_len = 0
     for para in re.split(r"\n\s*\n", text):
+        if len(para) > max_chars:
+            if current:
+                parts.append("\n\n".join(current).strip())
+                current = []
+                current_len = 0
+            # A single giant paragraph must not defeat the documented bound.
+            parts.extend(
+                para[start : start + max_chars]
+                for start in range(0, len(para), max_chars)
+            )
+            continue
         if current and current_len + len(para) + 2 > max_chars:
             parts.append("\n\n".join(current).strip())
             current = []

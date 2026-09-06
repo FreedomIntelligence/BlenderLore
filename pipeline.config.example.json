@@ -1,0 +1,6 @@
+{
+  "endpoint": "https://YOUR_COMPATIBLE_PROVIDER/v1/chat/completions",
+  "api_key_file": "/absolute/path/outside/this/repository/model_api_key",
+  "model": "gpt-5.6-sol",
+  "blender": "/absolute/path/to/blender"
+}

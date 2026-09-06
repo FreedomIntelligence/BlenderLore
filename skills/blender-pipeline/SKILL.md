@@ -6,6 +6,16 @@ description: Route Blender work among maintained-showcase reproduction, from-zer
 # Blender Pipeline Router
 
 Select exactly one primary mode before loading implementation detail.
+## Public one-command tutorial replay
+
+Use repository-root `run_codex.py` or `run_api.py`; see the root README for commands.
+Video file/URL or `--tutorial` requires a new output directory outside the repo,
+not RW1, private workers, or a showcase recipe. Pass source `--asset`, dependency
+`--asset-root`, textures `--input-asset`, starting `--preview`, and final
+`--target-image` explicitly. Source-assisted replay is not unrestricted editing.
+Choose `--tutorial-method visual` (recommended ≤10 minutes) or `legacy-rich`
+(original rich-window/base64 workflow). Optional `--render-html` adds no model
+call. Root launchers do not automatically promote outputs into active knowledge.
 
 ## Extract a tutorial from video
 

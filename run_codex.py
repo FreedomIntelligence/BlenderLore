@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Launch the same reproduction pipeline using the signed-in Codex CLI."""
+"""Compatibility entry point for the selectable blender-pipeline Codex skill."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(
     0, str(Path(__file__).resolve().parent / "skills/blender-pipeline/scripts")
 )
-from pipeline_launcher import main
+from launch_from_codex import main
 
 if __name__ == "__main__":
-    raise SystemExit(main("codex-cli"))
+    raise SystemExit(main())

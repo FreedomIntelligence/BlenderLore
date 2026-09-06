@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blender Pipeline"
+  short_description: "Create a tutorial or reconstruct a Blender result from video"
+  default_prompt: "使用 $blender-pipeline 处理我提供的视频、配套资产或 Markdown 图文教程；如果我没有说明需要哪种结果，请先询问。"

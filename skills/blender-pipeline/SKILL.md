@@ -1,44 +1,52 @@
 ---
 name: blender-pipeline
-description: Route Blender work among maintained-showcase reproduction, from-zero generation, and scoped editing of existing assets, with shared quality gates and maintained knowledge references.
+description: Extract a tutorial or reconstruct a Blender result from video links, local videos with supporting assets, or Markdown tutorials in Codex chat. Clarify the intended output when unspecified; also route explicit showcase reproduction and independent asset edits.
 ---
 
-# Blender Pipeline Router
+# Blender Pipeline
 
-Select exactly one primary mode before loading implementation detail.
-## Public one-command tutorial replay
+## Start from the Codex client
 
-Use repository-root `run_codex.py` or `run_api.py`; see the root README for commands.
-Video file/URL or `--tutorial` requires a new output directory outside the repo,
-not RW1, private workers, or a showcase recipe. Pass source `--asset`, dependency
-`--asset-root`, textures `--input-asset`, starting `--preview`, and final
-`--target-image` explicitly. Source-assisted replay is not unrestricted editing.
-Choose `--tutorial-method visual` (recommended ≤10 minutes) or `legacy-rich`
-(original rich-window/base64 workflow). Optional `--render-html` adds no model
-call. Root launchers do not automatically promote outputs into active knowledge.
+This is the user-facing Codex launcher. If the requested output is unclear, ask
+whether the user wants only a tutorial or a complete Blender reconstruction;
+wait for their choice before launching. Do not ask again when the goal is explicit.
+
+Read [references/codex-launch.md](references/codex-launch.md), interpret the
+user's natural-language inputs, and invoke this skill's
+`scripts/launch_from_codex.py` yourself. It calls the same maintained pipeline
+as the API entrypoint. Tutorial-only stops after preparation; full reconstruction
+continues through knowledge retrieval → Blender generation → render and review.
+
+A video with an accompanying `.blend`, preview, texture, or dependency bundle
+retains those inputs in either selected route; it is not an independent edit.
+A supplied Markdown tutorial skips video extraction: prepare it for tutorial-only,
+or continue knowledge-backed generation for reconstruction. No RW1 is required.
+
+Use the user's requested output location or established data root. Ask only for
+missing information needed to run, not command-line flags or API credentials.
+The Codex path uses the signed-in Codex CLI; the user need not run a Python
+launcher manually. `run_codex.py` remains a compatibility entrypoint, not the
+client interaction. Requests to explain, inspect, or dry-run do not authorize
+an actual reconstruction.
 
 ## Extract a tutorial from video
 
-Use tutorial extraction when the immediate deliverable is a complete illustrated
-Markdown tutorial, learner inputs, and a separate 100-point JSON rubric. Read
-[tutorial-extraction/SKILL.md](tutorial-extraction/SKILL.md). Generation and
-reproduction delegate their video-understanding stage to this same entrypoint.
+For tutorial-only, pass `--extract-only` and do not start reconstruction. Read
+[tutorial-extraction/SKILL.md](tutorial-extraction/SKILL.md) for illustrated
+Markdown, learner inputs and the separate rubric; both replay routes reuse it.
 
 ## Reproduce a maintained showcase
 
-Use reproduction when the user names a cataloged showcase and supplies video,
-tutorial, image, or authorized source-asset inputs. This hybrid route first
-enforces recipe, visual-acceptance, and distribution gates, then delegates the
-actual scene work to generation or editing.
-
-Read [reproduction/SKILL.md](reproduction/SKILL.md). Do not treat a public
-preview or catalog entry as asset-download authorization.
+Read [reproduction/SKILL.md](reproduction/SKILL.md) only for an explicitly
+requested catalog recipe or hybrid-delivery workflow. A tutorial's subject
+also appearing on the showcase does not change ordinary replay routing.
+Public previews do not authorize downloading the underlying assets.
 
 ## Generate from zero
 
-Use generation when the requested asset must be reconstructed from a video,
-tutorial, reference sequence, or textual specification and no existing project
-is the authoritative baseline.
+For ordinary video/tutorial requests use the client launcher above. Use the
+specialized generation mode for an explicit from-zero reference/text task or
+low-level generation work, with no authoritative starting project.
 
 Read [generation/SKILL.md](generation/SKILL.md), then load
 [knowledge/generation.md](knowledge/generation.md),
@@ -48,11 +56,9 @@ the relevant sections of
 
 ## Edit an existing asset
 
-Use editing when a `.blend` file, imported scene, or other existing asset is the
-authoritative baseline and the request changes only selected materials, colors,
-geometry, modeling, or scene elements. This
-remains an editing task when the replacement object itself is generated from
-scratch by the pipeline.
+Use editing for a standalone change request on an existing asset, without a
+video/tutorial reconstruction workflow. A generated replacement object within
+that scoped change remains part of the edit.
 
 Read [editing/SKILL.md](editing/SKILL.md), then load
 [knowledge/editing.md](knowledge/editing.md) and only the relevant sections of
@@ -60,8 +66,6 @@ Read [editing/SKILL.md](editing/SKILL.md), then load
 
 ## Shared rules
 
-- Do not run the from-zero pipeline merely because an edit contains a newly
-  generated replacement.
 - Keep mode-specific code, tests, manifests, and outputs separate. Share only
   stable utilities and contracts.
 - Preserve verified source intent and non-target dimensions. A successful file
@@ -73,8 +77,4 @@ Read [editing/SKILL.md](editing/SKILL.md), then load
 - Start knowledge lookup at [knowledge/index.md](knowledge/index.md); do not
   load every reference for an ordinary single-mode task.
 
-Validate the packaged skill with:
-
-```bash
-python3 skills/blender-pipeline/scripts/validate_package.py
-```
+Package maintenance uses `scripts/validate_package.py`, not every ordinary launch.

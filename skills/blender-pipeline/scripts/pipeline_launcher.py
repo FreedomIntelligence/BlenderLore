@@ -686,13 +686,16 @@ def execute(provider: str, argv: list[str] | None) -> int:
         "target_image": str(args.target_image) if args.target_image else None,
         "rw1_required": False,
         "knowledge_backend": "bundled reviewed guidance + run-local manifest_lexical",
-        "stages": [
-            "input staging",
-            "tutorial preparation",
-            "knowledge retrieval",
-            "existing strict Blender replay",
-            "route-specific review",
-        ],
+        "stages": ["input staging", "tutorial preparation"]
+        + (
+            []
+            if args.extract_only
+            else [
+                "knowledge retrieval",
+                "existing strict Blender replay",
+                "route-specific review",
+            ]
+        ),
         "extract_only": args.extract_only,
         "max_extraction_calls": args.max_extraction_calls,
         "max_replay_calls": args.max_replay_calls,

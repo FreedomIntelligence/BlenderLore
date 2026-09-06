@@ -73,6 +73,9 @@ FORBIDDEN_ARTIFACT_SUFFIXES = {
 }
 REQUIRED_FILES = {
     Path("SKILL.md"),
+    Path("agents/openai.yaml"),
+    Path("references/codex-launch.md"),
+    Path("scripts/launch_from_codex.py"),
     Path("generation/SKILL.md"),
     Path("generation/requirements.txt"),
     Path("generation/requirements-knowledge.txt"),

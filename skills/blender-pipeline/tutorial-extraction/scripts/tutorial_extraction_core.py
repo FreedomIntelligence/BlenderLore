@@ -238,7 +238,9 @@ def run_command(
             check=True,
             text=True,
             stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
-            stderr=subprocess.PIPE if capture else subprocess.DEVNULL,
+            # Keep failures actionable even when successful command output is
+            # intentionally quiet (notably yt-dlp platform/network errors).
+            stderr=subprocess.PIPE,
             timeout=timeout,
         )
     except FileNotFoundError as exc:
@@ -248,7 +250,11 @@ def run_command(
     except subprocess.TimeoutExpired as exc:
         raise ExtractionError(f"command timed out: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or exc.stdout or "").strip()[-1000:]
+        detail = (exc.stderr or exc.stdout or "").strip()
+        # Download errors may echo signed URLs. Diagnostics need the reason,
+        # not source credentials or query parameters.
+        detail = re.sub(r"https?://[^\s<>\"']+", "[source URL]", detail)
+        detail = detail[-1000:]
         raise ExtractionError(f"command failed: {command[0]}: {detail}") from exc
 
 
@@ -402,6 +408,13 @@ def materialize_url(url: str, root: Path) -> tuple[Path, list[Path]]:
         [
             *yt_dlp,
             "--no-playlist",
+            "--no-progress",
+            "--socket-timeout",
+            "15",
+            "--retries",
+            "1",
+            "--fragment-retries",
+            "1",
             "--merge-output-format",
             "mp4",
             "-f",
@@ -673,6 +686,46 @@ def local_asr(video: Path, *, language_hint: str | None = None) -> TranscriptRes
         r"[a-z]{2,3}(?:-[a-z0-9]{2,8})?", normalized_language
     ):
         raise ValueError("ASR language hint must be a BCP-47-like language code")
+    # Caption-only screen recordings often contain no audio track. Probe before
+    # importing an ASR backend: loading one may download hundreds of MB even
+    # though there is nothing to transcribe.
+    try:
+        audio_probe = run_command(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                str(video),
+            ],
+            timeout=60,
+            capture=True,
+        )
+    except ExtractionError:
+        return TranscriptResult(
+            "unavailable",
+            "none",
+            warning=(
+                "Could not inspect the source audio streams; local ASR and model "
+                "loading were skipped. Extraction continues with visual/OCR evidence."
+            ),
+            attempted_sources=["audio_stream_probe"],
+        )
+    if not audio_probe.stdout.strip():
+        return TranscriptResult(
+            "unavailable",
+            "none",
+            warning=(
+                "Source video contains no audio stream; local ASR and model loading "
+                "were skipped. Extraction continues with visual/OCR evidence."
+            ),
+            attempted_sources=["audio_stream_probe"],
+        )
     initial_prompt = (
         CHINESE_BLENDER_ASR_PROMPT
         if normalized_language in {"zh", "zh-cn", "zh-tw"}

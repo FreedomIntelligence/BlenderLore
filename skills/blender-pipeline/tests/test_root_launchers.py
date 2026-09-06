@@ -115,6 +115,147 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(1, status)
         self.assertFalse((self.root / "new.json").exists())
 
+    def test_configure_keeps_secret_out_of_json_stdout_and_repository(self):
+        dest = self.root / "private" / "pipeline.json"
+        key = "DUMMY_CONFIG_TEST_SECRET"
+        real_fstat = os.fstat
+
+        def owner_only(fd):
+            values = list(real_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o600
+            return os.stat_result(values)
+
+        # Test successful configuration logic independently from the external
+        # test volume's permission capabilities (exFAT is tested separately).
+        stdout = io.StringIO()
+        with (
+            patch(
+                "builtins.input", return_value="https://example.org/v1/chat/completions"
+            ),
+            patch.object(launcher.getpass, "getpass", return_value=key),
+            patch.object(launcher.os, "fstat", side_effect=owner_only),
+            contextlib.redirect_stdout(stdout),
+        ):
+            status = launcher.main("api", ["--configure", "--config", str(dest)])
+        self.assertEqual(status, 0)
+        config = json.loads(dest.read_text())
+        self.assertEqual(set(config), {"endpoint", "api_key_file", "model"})
+        key_file = Path(config["api_key_file"])
+        self.assertEqual(key_file.read_text(), key)
+        self.assertFalse(key_file.is_relative_to(REPO))
+        self.assertNotIn(key, dest.read_text())
+        self.assertNotIn(key, stdout.getvalue())
+
+    def test_configure_rejects_unsupported_permissions_and_removes_own_files(self):
+        dest = self.root / "unsupported" / "pipeline.json"
+        real_fstat = os.fstat
+
+        def ignored_permissions(fd):
+            values = list(real_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o700
+            return os.stat_result(values)
+
+        stderr = io.StringIO()
+        with (
+            patch(
+                "builtins.input", return_value="https://example.org/v1/chat/completions"
+            ),
+            patch.object(
+                launcher.getpass, "getpass", return_value="DUMMY_NEVER_STORED"
+            ),
+            patch.object(launcher.os, "fstat", side_effect=ignored_permissions),
+            contextlib.redirect_stderr(stderr),
+        ):
+            status = launcher.main("api", ["--configure", "--config", str(dest)])
+        self.assertEqual(status, 1)
+        self.assertIn("0600", stderr.getvalue())
+        self.assertNotIn("DUMMY_NEVER_STORED", stderr.getvalue())
+        self.assertFalse(dest.exists())
+        self.assertFalse((dest.parent / "model_api_key").exists())
+
+    def test_configure_rejects_repository_path_and_preserves_existing_secret(self):
+        existing = self.root / "model_api_key"
+        existing.write_text("PRESERVE_EXISTING")
+        for dest in (REPO / "private-test.json", self.root / "private.json"):
+            with (
+                patch("builtins.input") as prompt,
+                patch.object(launcher.getpass, "getpass") as secret,
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
+                status = launcher.main("api", ["--configure", "--config", str(dest)])
+            self.assertEqual(status, 1)
+            prompt.assert_not_called()
+            secret.assert_not_called()
+        self.assertEqual(existing.read_text(), "PRESERVE_EXISTING")
+
+    def test_configure_does_not_overwrite_a_config_created_during_setup(self):
+        dest = self.root / "raced" / "pipeline.json"
+        real_open, real_fstat = os.open, os.fstat
+
+        def owner_only(fd):
+            values = list(real_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o600
+            return os.stat_result(values)
+
+        def concurrent_config(path, *args, **kwargs):
+            if Path(path) == dest:
+                dest.write_text("USER_CREATED_CONFIG")
+            return real_open(path, *args, **kwargs)
+
+        with (
+            patch(
+                "builtins.input", return_value="https://example.org/v1/chat/completions"
+            ),
+            patch.object(
+                launcher.getpass, "getpass", return_value="DUMMY_RACED_SECRET"
+            ),
+            patch.object(launcher.os, "open", side_effect=concurrent_config),
+            patch.object(launcher.os, "fstat", side_effect=owner_only),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            status = launcher.main("api", ["--configure", "--config", str(dest)])
+        self.assertEqual(status, 1)
+        self.assertEqual(dest.read_text(), "USER_CREATED_CONFIG")
+        self.assertFalse((dest.parent / "model_api_key").exists())
+
+    def test_json_configuration_and_direct_parameters_resolve_identically(self):
+        config = self.root / "pipeline.json"
+        key_file = self.root / "do-not-read.key"
+        values = {
+            "endpoint": "https://example.org/v1/chat/completions",
+            "api_key_file": str(key_file),
+            "model": "gpt-5.6-sol",
+            "blender": "configured-blender",
+        }
+        config.write_text(json.dumps(values))
+        with patch.dict(
+            os.environ, {"BLENDER_PIPELINE_API_ENDPOINT": "ignored-env-value"}
+        ):
+            configured = launcher.settings(
+                launcher.parser("api").parse_args(
+                    ["--config", str(config), "--dry-run"]
+                ),
+                "api",
+            )
+            explicit = launcher.settings(
+                launcher.parser("api").parse_args(
+                    [
+                        "--endpoint",
+                        values["endpoint"],
+                        "--api-key-file",
+                        str(key_file),
+                        "--model",
+                        values["model"],
+                        "--blender",
+                        values["blender"],
+                        "--dry-run",
+                    ]
+                ),
+                "api",
+            )
+        self.assertEqual(configured, explicit)
+        self.assertFalse(key_file.exists())
+
     def test_video_url_validation_matches_the_extractor(self):
         fake_userinfo = ":".join(("test-user", "test-password"))
         for url in (
@@ -266,6 +407,8 @@ class LauncherTests(unittest.TestCase):
             self.assertNotIn(key, env)
         self.assertTrue(Path(env["TMPDIR"]).is_relative_to(out))
         self.assertEqual("codex-cli", env["BLENDER_PIPELINE_PROVIDER"])
+        self.assertEqual("CYCLES", env["VIDEO2BLENDER_RENDER_ENGINE"])
+        self.assertEqual("CPU", env["VIDEO2BLENDER_CYCLES_BACKEND"])
 
     def test_self_nested_supporting_directory_copy_is_blocked_before_copytree(self):
         source = self.root / "assets"

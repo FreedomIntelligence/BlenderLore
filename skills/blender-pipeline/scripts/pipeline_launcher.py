@@ -218,14 +218,44 @@ def configure(args: argparse.Namespace, provider: str) -> int:
     if not key or "\n" in key:
         raise ValueError("An API key is required")
     dest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as stream:
-        stream.write(key)
-    write_json(
-        dest,
-        {"endpoint": endpoint, "api_key_file": str(key_path), "model": "gpt-5.6-sol"},
-    )
-    dest.chmod(0o600)
+    created = []
+
+    def write_private(path: Path, content: str) -> None:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        created.append(path)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            metadata = os.fstat(stream.fileno())
+            if os.name == "posix" and (
+                metadata.st_mode & 0o777 != 0o600 or metadata.st_uid != os.getuid()
+            ):
+                raise ValueError(
+                    "Private configuration requires owner-only POSIX mode 0600. "
+                    "Choose a private local configuration directory on a filesystem "
+                    "that supports these permissions, not exFAT."
+                )
+            stream.write(content)
+
+    try:
+        write_private(key_path, key)
+        write_private(
+            dest,
+            json.dumps(
+                {
+                    "endpoint": endpoint,
+                    "api_key_file": str(key_path),
+                    "model": "gpt-5.6-sol",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+        )
+    except BaseException:
+        # Roll back only files exclusively created by this invocation. Never
+        # report a usable configuration when its filesystem ignored 0600.
+        for path in reversed(created):
+            path.unlink(missing_ok=True)
+        raise
     print(f"Private configuration created: {dest}")
     return 0
 
@@ -420,6 +450,10 @@ def runtime_env(
             "BLENDER_PIPELINE_MODEL": options["model"],
             "BLENDER_PIPELINE_BLENDER": options["blender"],
             "BLENDER_PIPELINE_RENDER_DEVICE_POLICY": "local",
+            "VIDEO2BLENDER_RENDER_ENGINE": "CYCLES",
+            "BLENDER_PIPELINE_FILM_TRANSPARENT": os.environ.get(
+                "BLENDER_PIPELINE_FILM_TRANSPARENT", "0"
+            ),
             "VIDEO2BLENDER_CYCLES_BACKEND": os.environ.get(
                 "VIDEO2BLENDER_CYCLES_BACKEND", "CPU"
             ),

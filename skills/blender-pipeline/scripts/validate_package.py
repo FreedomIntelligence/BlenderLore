@@ -85,6 +85,7 @@ REQUIRED_FILES = {
     Path("editing/schemas/edit_receipt.schema.json"),
     Path("generation/scripts/render_illustrated_tutorial.py"),
     Path("generation/scripts/codex_cli_chat_bridge.py"),
+    Path("generation/scripts/camera_framing.py"),
     Path("tutorial-extraction/SKILL.md"),
     Path("tutorial-extraction/agents/openai.yaml"),
     Path("tutorial-extraction/requirements.txt"),
@@ -586,7 +587,11 @@ def check_json_schemas(root: Path) -> list[Issue]:
             )
         )
     declared = set(declared_paths)
-    actual = {path.name for path in (root / "knowledge").glob("*.md")}
+    actual = {
+        path.name
+        for path in (root / "knowledge").glob("*.md")
+        if not path.name.startswith("._")
+    }
     if declared != actual:
         issues.append(
             Issue(

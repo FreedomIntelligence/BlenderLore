@@ -199,13 +199,15 @@ def _positive_term_matches(text: str, term: str) -> bool:
         prefix = (text or "")[max(0, match.start() - 100) : match.start()]
         # Negation belongs to its clause; "no X, but add Y" must retain Y.
         prefix = re.split(
-            r"[。！？!?;；\n]|\b(?:but|however|instead)\b|但是|但|而是",
+            r"[。！？!?;；\n]|\b(?:but|however|instead)\b|但是|但|而是|"
+            r"[，,]\s*(?=(?:另外|然后|再)?(?:添加|使用|设置|创建|连接|建立))",
             prefix,
             flags=re.I,
         )[-1]
         if re.search(
-            r"(?:未|没有|并无|无需|无须|不(?:要|需|会|是|含|包含|使用|设置)|"
-            r"禁止|避免).{0,16}$|(?:无|不)\s*$",
+            r"(?:未|没有|并无|无需|无须|无(?!缝|限|穷|论|法)|"
+            r"不(?:要|需|会|是|含|包含|使用|设置)|禁止|避免).{0,64}$|"
+            r"(?:无|不|非)\s*$",
             prefix,
             re.I,
         ):
@@ -779,9 +781,11 @@ def scan_full_transcript_motion(
 def build_motion_plan(
     video_dir: Path, title: str, tutorial: str, steps: Any
 ) -> dict[str, Any]:
-    steps_text = json.dumps(steps or {}, ensure_ascii=False)[:50000]
+    steps_text = _step_instruction_text(steps)[:50000]
     title_steps_haystack = "\n".join([title, steps_text]).lower()
-    haystack = "\n".join([title, tutorial[:50000], steps_text]).lower()
+    haystack = "\n".join(
+        [title, _instructional_text(tutorial)[:50000], steps_text]
+    ).lower()
     hits = _positive_motion_hits(haystack, DYNAMIC_TERMS)
     strong_hits = _positive_motion_hits(title_steps_haystack, STRONG_DYNAMIC_TERMS)
     title_l = title.lower()
@@ -962,17 +966,138 @@ def build_motion_plan(
     return plan
 
 
+def _instructional_text(text: str) -> str:
+    """Keep tutorial meaning, not attribution, URL payloads or author names."""
+
+    lines = []
+    attribution = re.compile(
+        r"^(?:source(?:\s+(?:video|url|link|frame))?|video\s+(?:source|url|link)|"
+        r"author|uploader|up\s*主|credits?|来源|视频来源|原视频(?:链接)?|"
+        r"视频(?:原帧|链接)|作者|作者署名)\s*(?:[:：|｜]|$)",
+        re.I,
+    )
+    for line in (text or "").splitlines():
+        plain = re.sub(r"^[\s#>*_`|\-]+", "", line)
+        plain = re.sub(r"[*_`]", "", plain)
+        if attribution.match(plain):
+            continue
+        # Link labels can describe an operation; their destinations cannot.
+        line = re.sub(r"!?\[([^\]\n]*)\]\([^\n]*?\)", r"\1", line)
+        line = re.sub(r"https?://\S+|data:image/\S+", "", line)
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _step_instruction_text(steps: Any) -> str:
+    """Project semantic step fields without schema, provenance or QA metadata."""
+
+    semantic_fields = {
+        "action",
+        "instruction",
+        "instructions",
+        "operation",
+        "operations",
+        "description",
+        "object",
+        "objects",
+        "target",
+        "parameters",
+        "parameter",
+        "input",
+        "inputs",
+        "output",
+        "outputs",
+        "expected_result",
+        "result",
+        "node",
+        "nodes",
+        "connection",
+        "connections",
+        "material",
+        "materials",
+        "geometry",
+        "modifier",
+        "modifiers",
+        "title",
+        "name",
+        "visual_result",
+        "material_color",
+        "spatial_relation",
+        "surface_detail",
+        "implementation_notes",
+        "relation_type",
+        "motion",
+        "animation",
+    }
+
+    def semantic_value(value: Any) -> str:
+        if isinstance(value, dict):
+            return "\n".join(
+                f"{key}: {semantic_value(item)}"
+                for key, item in value.items()
+                if key not in {"url", "path", "sha256", "source", "evidence_id"}
+            )
+        if isinstance(value, list):
+            return "\n".join(semantic_value(item) for item in value)
+        return _instructional_text(str(value)) if value is not None else ""
+
+    def project(value: Any) -> str:
+        if isinstance(value, list):
+            return "\n".join(project(item) for item in value)
+        if isinstance(value, dict):
+            return "\n".join(
+                project(item) if key == "steps" else semantic_value(item)
+                for key, item in value.items()
+                if key == "steps" or key in semantic_fields
+            )
+        return semantic_value(value)
+
+    return project(steps or {})
+
+
+def _scene_subject_hits(title: str) -> list[str]:
+    # Starting from an empty/default scene says nothing about the final asset
+    # family. Keep actual room/interior/scene subjects elsewhere in the title.
+    subject_title = re.sub(
+        r"\b(?:empty|blank|default|startup)\s+(?:blender\s+)?scene\b|"
+        r"(?:空白?|默认|初始|启动)(?:的)?(?:Blender\s*)?场景",
+        "",
+        title,
+        flags=re.I,
+    )
+    return _positive_hits(subject_title, SCENE_ENVIRONMENT_TITLE_TERMS)
+
+
+def _procedural_material_hits(text: str) -> list[str]:
+    """Procedural geometry alone does not require a textured surface."""
+
+    patterns = (
+        r"\bprocedural(?:ly)?[\s_-]+(?:texture|material|shader|shading)s?\b",
+        r"程序化(?:的)?(?:纹理|材质|着色器?|贴图)",
+        r"(?:使用|用|通过)?程序化(?:方式|方法)?(?:生成|制作|创建|构建)(?:纹理|材质|着色器|贴图)",
+    )
+    return (
+        ["procedural_material"]
+        if any(
+            _positive_term_matches(text, match.group(0))
+            for pattern in patterns
+            for match in re.finditer(pattern, text, re.I)
+        )
+        else []
+    )
+
+
 def build_material_spec(
     video_dir: Path, title: str, tutorial: str, steps: Any
 ) -> dict[str, Any]:
-    text = "\n".join([title, tutorial, json.dumps(steps or {}, ensure_ascii=False)])
+    step_text = _step_instruction_text(steps)
+    text = "\n".join([title, _instructional_text(tutorial), step_text])
     title_l = title.lower()
     # 金属/金属度 describes a shader property, not the gold colour. Negated
     # transparency likewise must not turn an opaque surface transparent.
     color_hits = _positive_hits(re.sub(r"金属度?", "", text), COLOR_TERMS)
     material_hits = _positive_hits(text, MATERIAL_TERMS)
     texture_detail_terms = [
-        "程序化",
         "噪波",
         "噪声",
         "凹凸",
@@ -995,9 +1120,11 @@ def build_material_spec(
     )
     procedural_texture_hits = _positive_hits(
         text,
-        ["procedural", "程序化", "noise", "噪声", "噪波", "voronoi", "wave texture"],
-    )
-    texture_detail_hits = _positive_hits(text, texture_detail_terms)
+        ["noise", "噪声", "噪波", "voronoi", "wave texture"],
+    ) + _procedural_material_hits(text)
+    texture_detail_hits = _positive_hits(
+        text, texture_detail_terms
+    ) + _procedural_material_hits(text)
     # A uniform BSDF Roughness value is material setup, not surface texture.
     # Spatial roughness detail still counts when explicitly described.
     roughness_patterns = (
@@ -1011,7 +1138,9 @@ def build_material_spec(
                 texture_detail_hits.append("roughness_variation")
                 break
     texture_detail_hits = sorted(set(texture_detail_hits))
-    title_texture_hits = _positive_hits(title, texture_detail_terms)
+    title_texture_hits = _positive_hits(
+        title, texture_detail_terms
+    ) + _procedural_material_hits(title)
     human_hits = _positive_hits(text, HUMAN_TERMS)
     animal_text = text
     animal_title = title
@@ -1023,15 +1152,16 @@ def build_material_spec(
     title_human_strong_hits = _positive_hits(title, HUMAN_STRONG_TERMS)
     title_general_hits = _positive_hits(title_l, GENERAL_ASSET_TITLE_TERMS)
     title_game_hits = _positive_hits(title_l, GAME_CHARACTER_TITLE_TERMS)
-    title_scene_hits = _positive_hits(title_l, SCENE_ENVIRONMENT_TITLE_TERMS)
-    tutorial_steps_l = json.dumps(steps or {}, ensure_ascii=False).lower()
-    text_confirms_human = any(
-        term in tutorial_steps_l
-        for term in ["人物", "角色", "人形", "character", "human", "face", "skin"]
+    title_scene_hits = _scene_subject_hits(title)
+    text_confirms_human = bool(
+        _positive_hits(
+            step_text, ["人物", "角色", "人形", "character", "human", "face", "skin"]
+        )
     )
-    text_confirms_animal = any(
-        term in tutorial_steps_l
-        for term in ["小猫", "猫", "狗", "动物", "animal", "cat", "dog", "pet"]
+    text_confirms_animal = bool(
+        _positive_hits(
+            step_text, ["小猫", "猫", "狗", "动物", "animal", "cat", "dog", "pet"]
+        )
     )
     if title_scene_hits:
         subject_family = "scene_environment"
@@ -1068,7 +1198,7 @@ def build_material_spec(
         "image_texture_required": bool(image_texture_hits),
         "procedural_texture_required": bool(procedural_texture_hits),
         "hard_constraints": [
-            "Do not leave the main asset with default gray/white material unless the tutorial explicitly says it is white/gray.",
+            "When a geometry tutorial shows no material or color operations, allow neutral, untextured gray/white presentation. Preserve explicitly specified or clearly demonstrated colors and materials when present; do not invent colors, patterns, or shader detail merely to replace an unspecified default surface.",
             "Every visible major object must receive a named material with base color and roughness.",
             "When exact texture files are unavailable, approximate the visual material procedurally instead of dropping the material.",
             "Preserve metallic/glass/transparent/emissive/rough/fabric/hair qualities when detected in tutorial text or evidence images.",

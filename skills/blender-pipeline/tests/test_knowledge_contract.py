@@ -5,6 +5,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,18 @@ class KnowledgeContractTests(unittest.TestCase):
         )
         self.assertFalse(validator.check_json_schemas(PACKAGE_ROOT))
         self.assertFalse(validator.check_links(PACKAGE_ROOT))
+
+    def test_manifest_ignores_macos_appledouble_sidecars(self) -> None:
+        real_glob = Path.glob
+
+        def glob_with_metadata(path, pattern):
+            matches = list(real_glob(path, pattern))
+            if path == KNOWLEDGE and pattern == "*.md":
+                matches.append(path / "._index.md")
+            return iter(matches)
+
+        with patch.object(Path, "glob", glob_with_metadata):
+            self.assertFalse(validator.check_json_schemas(PACKAGE_ROOT))
 
     def test_every_maintained_rule_is_structured_and_searchable(self) -> None:
         for name, text in self.documents.items():

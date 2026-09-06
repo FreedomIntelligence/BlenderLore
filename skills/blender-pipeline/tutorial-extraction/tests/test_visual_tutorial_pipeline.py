@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -88,6 +89,45 @@ def fixture(root: Path):
 
 
 class VisualTutorialTests(unittest.TestCase):
+    def test_quiet_command_keeps_failure_reason_without_signed_url(self):
+        failure = subprocess.CalledProcessError(
+            1,
+            ["yt-dlp"],
+            stderr="HTTP Error 412: Precondition Failed https://example.org/video?token=secret",
+        )
+        with patch.object(
+            visual.transport.subprocess, "run", side_effect=failure
+        ) as run:
+            with self.assertRaises(visual.transport.ExtractionError) as caught:
+                visual.transport.run_command(["yt-dlp"], capture=False)
+        self.assertIn("412: Precondition Failed", str(caught.exception))
+        self.assertNotIn("token", str(caught.exception))
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertEqual(subprocess.PIPE, run.call_args.kwargs["stderr"])
+
+    def test_url_download_bounds_network_retries(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "source.mp4").touch()
+            with (
+                patch.object(
+                    visual.transport, "_yt_dlp_command", return_value=["yt-dlp"]
+                ),
+                patch.object(visual.transport, "run_command") as run,
+                patch.object(
+                    visual.transport, "fetch_platform_subtitles", return_value=[]
+                ),
+            ):
+                video, _ = visual.transport.materialize_url(
+                    "https://example.org/video", root
+                )
+            self.assertEqual(root / "source.mp4", video)
+            command = run.call_args.args[0]
+            self.assertEqual("15", command[command.index("--socket-timeout") + 1])
+            self.assertEqual("1", command[command.index("--retries") + 1])
+            self.assertEqual("1", command[command.index("--fragment-retries") + 1])
+            self.assertIn("--no-progress", command)
+
     def test_owned_cleanup_tolerates_only_vanished_entries(self):
         def vanished(_path, *, onerror):
             onerror(

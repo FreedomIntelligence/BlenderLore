@@ -54,6 +54,70 @@ class _TrajectoryStub:
 
 
 class GenerationDeliveryTests(unittest.TestCase):
+    def test_publish_cleanup_tolerates_only_missing_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            out = root / "attempt"
+            write_test_png(out / "six_views" / "iso.png")
+            write_test_png(root / "six_views" / "stale.png")
+            original_rmtree = shutil.rmtree
+
+            def already_gone(path, *, onerror):
+                error = FileNotFoundError("sidecar already removed")
+                onerror(
+                    os.unlink, str(path / "._stale.png"), (type(error), error, None)
+                )
+                original_rmtree(path, onerror=onerror)
+
+            with patch.object(replay_main.shutil, "rmtree", side_effect=already_gone):
+                replay_main.publish_outputs(root, out)
+            self.assertTrue((root / "six_views" / "iso.png").is_file())
+            self.assertFalse((root / "six_views" / "stale.png").exists())
+
+            def access_denied(path, *, onerror):
+                error = PermissionError("cannot replace published views")
+                onerror(os.unlink, str(path / "iso.png"), (type(error), error, None))
+
+            with (
+                patch.object(replay_main.shutil, "rmtree", side_effect=access_denied),
+                patch.object(replay_main.shutil, "copytree") as copytree,
+            ):
+                with self.assertRaises(PermissionError):
+                    replay_main.publish_outputs(root, out)
+                copytree.assert_not_called()
+
+    def test_stale_delivery_cleanup_tolerates_only_missing_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "six_views").mkdir()
+
+            def already_gone(path, *, onerror):
+                error = FileNotFoundError("sidecar already removed")
+                onerror(os.unlink, str(path / "._iso.png"), (type(error), error, None))
+
+            with patch.object(strict_replay.shutil, "rmtree", side_effect=already_gone):
+                strict_replay.clear_stale_postprocess_delivery(root)
+
+            def access_denied(path, *, onerror):
+                error = PermissionError("cannot remove stale delivery")
+                onerror(os.unlink, str(path / "iso.png"), (type(error), error, None))
+
+            with patch.object(
+                strict_replay.shutil, "rmtree", side_effect=access_denied
+            ):
+                with self.assertRaises(PermissionError):
+                    strict_replay.clear_stale_postprocess_delivery(root)
+
+    def test_bevel_api_name_rewrite_preserves_other_properties(self) -> None:
+        source = "bevel = obj.modifiers.new(name='Edges', type='BEVEL')\nbevel.clamp_overlap = True\nother.clamp_overlap = False\n"
+        rewritten = strict_replay.sanitize_generated_code(source)
+        self.assertIn("bevel.use_clamp_overlap = True", rewritten)
+        self.assertIn("other.clamp_overlap = False", rewritten)
+        weighted = "normals = obj.modifiers.new('Normals', 'WEIGHTED_NORMAL')\nnormals.weight = 50.0\nother.weight = 50.0\n"
+        rewritten = strict_replay.sanitize_generated_code(weighted)
+        self.assertIn("normals.weight = 50\n", rewritten)
+        self.assertIn("other.weight = 50.0", rewritten)
+
     def test_rich_tutorial_provider_error_exposes_only_safe_code(self) -> None:
         response = SimpleNamespace(
             status_code=428,
@@ -186,6 +250,47 @@ class GenerationDeliveryTests(unittest.TestCase):
             self.assertIn("abstained_no_visual_baseline", review)
             api.assert_not_called()
 
+    def test_provided_markdown_images_are_hash_bound_visual_baselines(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            picture = root / "provided_images/final.png"
+            write_test_png(picture)
+            tutorial = root / "tutorial_path_refs.md"
+            tutorial.write_text(
+                "# Cube\n![Final cube](provided_images/final.png)\n", encoding="utf-8"
+            )
+            (root / "tutorial_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "video2blender-provided-tutorial.v1",
+                        "files": [
+                            {
+                                "path": tutorial.name,
+                                "sha256": strict_replay.sha256_file(tutorial),
+                            }
+                        ],
+                        "images": [
+                            {
+                                "path": "provided_images/final.png",
+                                "sha256": strict_replay.sha256_file(picture),
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = strict_replay.ordered_tutorial_visual_evidence(root)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["role"], "provided_tutorial_evidence")
+            self.assertEqual(result[0]["document_order"], 1)
+            self.assertNotIn("start_sec", result[0])
+            original = tutorial.read_text()
+            tutorial.write_text(original + "Changed after staging", encoding="utf-8")
+            self.assertEqual(strict_replay.ordered_tutorial_visual_evidence(root), [])
+            tutorial.write_text(original, encoding="utf-8")
+            write_test_png(picture, color=(255, 0, 0))
+            self.assertEqual(strict_replay.ordered_tutorial_visual_evidence(root), [])
+
     def test_static_visual_review_uses_manifest_ordered_tutorial_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             video_dir = Path(directory)
@@ -236,6 +341,8 @@ class GenerationDeliveryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             write_test_png(out_dir / "render.png")
+            for name in CANONICAL_SIX_VIEW_NAMES:
+                write_test_png(out_dir / "six_views" / f"{name}.png")
             captured: dict = {}
 
             def checkpoint(**kwargs):
@@ -251,6 +358,16 @@ class GenerationDeliveryTests(unittest.TestCase):
                     video_dir, out_dir, 0
                 )
             self.assertTrue(passed)
+            review_prompt = captured["payload"]["messages"][0]["content"][0]["text"]
+            self.assertIn("![first](rich_evidence/windows/first.png)", review_prompt)
+            self.assertEqual(len(captured["generated_views"]), 6)
+            self.assertEqual(
+                {item["image_id"] for item in captured["generated_views"]},
+                {
+                    f"VIEW_{Path(name).stem.upper()}"
+                    for name in CANONICAL_SIX_VIEW_NAMES
+                },
+            )
             self.assertEqual(
                 [item["path"] for item in captured["ordered_visual_baseline"]],
                 [
@@ -258,6 +375,26 @@ class GenerationDeliveryTests(unittest.TestCase):
                     "rich_evidence/windows/second.png",
                 ],
             )
+
+    def test_invalid_visual_reply_does_not_authorize_asset_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_test_png(root / "render.png")
+            image = strict_replay._validated_review_image(root, root / "render.png")
+            with patch.object(
+                strict_replay, "validated_final_reference", return_value=image
+            ):
+                for response in [
+                    b"I am checking the tutorial",
+                    b'{"pass":"false","critical_issues":[],"repair_instruction":""}',
+                ]:
+                    with patch.object(
+                        strict_replay, "load_stage_checkpoint", return_value=response
+                    ):
+                        with self.assertRaisesRegex(
+                            RuntimeError, "no valid JSON decision"
+                        ):
+                            strict_replay.review_static_render(root, root, 0)
 
     def test_rw1_static_release_renders_complete_six_views(self) -> None:
         blender = (

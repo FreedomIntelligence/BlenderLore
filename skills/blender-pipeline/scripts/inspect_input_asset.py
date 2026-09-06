@@ -39,6 +39,30 @@ def image_dependency_paths(item, path: Path) -> list[Path]:
     return result
 
 
+def mesh_topology_summary(mesh) -> dict:
+    """Describe the stored mesh without welding vertices or applying modifiers."""
+    face_uses = [0] * len(mesh.edges)
+    for polygon in mesh.polygons:
+        for loop_index in polygon.loop_indices:
+            face_uses[mesh.loops[loop_index].edge_index] += 1
+    positions = set()
+    coincident = 0
+    for vertex in mesh.vertices:
+        position = tuple(vertex.co)
+        if position in positions:
+            coincident += 1
+        else:
+            positions.add(position)
+    return {
+        "vertices": len(mesh.vertices),
+        "edges": len(mesh.edges),
+        "faces": len(mesh.polygons),
+        "boundary_edges": sum(count == 1 for count in face_uses),
+        "nonmanifold_edges": sum(count != 2 for count in face_uses),
+        "coincident_vertex_count": coincident,
+    }
+
+
 def inspect(asset: Path, root: Path) -> dict:
     if asset.suffix.lower() != ".blend":
         # Interchange files do not replace the current scene. Factory startup
@@ -97,11 +121,21 @@ def inspect(asset: Path, root: Path) -> dict:
         "status": "blocked" if issues else "pass",
         "issues": issues,
         "blender_version": bpy.app.version_string,
+        "topology_fact_definitions": {
+            "scope": "Stored mesh, before modifier evaluation; no topology was changed.",
+            "boundary_edges": "Edges incident to exactly one polygon.",
+            "nonmanifold_edges": "Edges incident to other than two polygons, including boundary and loose edges.",
+            "coincident_vertex_count": "Vertices beyond the first at exactly identical object-local coordinates; no tolerance-based merging is inferred.",
+        },
         "objects": [
             {
                 "name": o.name,
                 "type": o.type,
-                "vertices": len(o.data.vertices) if o.type == "MESH" else None,
+                **(
+                    mesh_topology_summary(o.data)
+                    if o.type == "MESH"
+                    else {"vertices": None}
+                ),
                 "materials": [m.name if m else None for m in o.data.materials]
                 if hasattr(o.data, "materials")
                 else [],

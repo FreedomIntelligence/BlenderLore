@@ -846,7 +846,14 @@ def publish_outputs(video_dir: Path, out_dir: Path | None) -> None:
     views_dst = video_dir / "six_views"
     if views_src.exists():
         if views_dst.exists():
-            shutil.rmtree(views_dst)
+
+            def ignore_disappeared_entry(_function, _path, exc_info):
+                # macOS may remove an AppleDouble sidecar together with its
+                # parent file. Other cleanup failures must block publication.
+                if not isinstance(exc_info[1], FileNotFoundError):
+                    raise exc_info[1]
+
+            shutil.rmtree(views_dst, onerror=ignore_disappeared_entry)
         shutil.copytree(views_src, views_dst)
         legacy_top = views_dst / " .png"
         if legacy_top.exists() and not (views_dst / "top.png").exists():

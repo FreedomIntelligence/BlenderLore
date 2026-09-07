@@ -1,12 +1,16 @@
 # 3D-Coding-Blender
 
-This repository provides an end-to-end [Blender reconstruction pipeline](#api-start) and a [Codex quick start](#codex-start) for turning tutorial videos or Markdown workflows into illustrated tutorials, editable Blender projects, and rendered results.
+English | [简体中文](README%20ZH.md)
 
-[简体中文](<README ZH.md>)
+Turn Blender tutorial videos or illustrated guides into editable Blender projects and renders.
 
-## 1. Install the required tools
+This repository provides an [end-to-end Pipeline](#pipeline) and a [Codex quick start](#codex).
 
-Install Python 3.10+, [Blender](https://www.blender.org/download/), and [FFmpeg](https://ffmpeg.org/download.html); make `blender`, `ffmpeg`, and `ffprobe` available on `PATH`. Then install the Python requirements:
+<a id="pipeline"></a>
+
+## 1. Install prerequisites
+
+Install Python 3.10+, Blender, and FFmpeg (including `ffprobe`), with Blender and FFmpeg on `PATH`. Commands below target macOS/Linux; on Windows, use Linux Python and Blender in WSL. Replace example paths with your own.
 
 ```bash
 git clone https://github.com/FreedomIntelligence/3D-Coding-Blender.git
@@ -16,130 +20,100 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-For videos without subtitles, install local speech recognition with `python -m pip install openai-whisper`, or provide a transcript using `--transcript /path/to/subtitles.srt`.
+For Codex, install and sign in to Codex CLI using the [official documentation](https://developers.openai.com/codex/cli/), and ensure the client can run `codex`.
 
-For Codex, install the CLI and sign in following the [official installation guide](https://learn.chatgpt.com/docs/codex/cli). The Codex workflow uses your signed-in account; it does not require a separate API key. Neither launch method requires the RW1 dataset.
+## 2. Install Skills
 
-## 2. Install the Skill — Codex only
-
-Run from the repository root:
+Run from the repository root to install the Skill into the current user's Codex environment:
 
 ```bash
 mkdir -p "$HOME/.agents/skills"
 ln -s "$PWD/skills/blender-pipeline" "$HOME/.agents/skills/blender-pipeline"
 ```
 
-Select **Blender Pipeline** in Codex, or mention `$blender-pipeline`, then provide your input and desired output. If the Skill does not appear, restart Codex. See the [official Skills documentation](https://learn.chatgpt.com/docs/build-skills) for other installation options.
+## 3. Configure rendering
 
-## 3. Configure CPU or GPU rendering
-
-The pipeline uses Cycles and defaults to CPU. For API runs, select **one** device in the terminal before launching.
-
-CPU:
+Cycles uses the CPU by default. Omit the Blender path setting if Blender is already on `PATH`.
 
 ```bash
+export BLENDER_PIPELINE_BLENDER=/path/to/blender
 export VIDEO2BLENDER_CYCLES_BACKEND=CPU
 ```
 
-GPU (Apple Silicon example):
+For GPU rendering, replace `CPU` with the appropriate backend: `OPTIX` or `CUDA` for NVIDIA, `METAL` for Apple Silicon, `HIP` for AMD, or `ONEAPI` for Intel.
 
-```bash
-export VIDEO2BLENDER_CYCLES_BACKEND=METAL
-```
+## 4. Configure inputs and outputs
 
-GPU backends: `METAL` for Apple Silicon, `OPTIX` or `CUDA` for NVIDIA, `HIP` for AMD, and `ONEAPI` for Intel. Choose a backend supported by your Blender installation and hardware.
+Keep input files on your computer. For API mode, enter their paths in the terminal launch command in step 5; for Codex, provide paths or links directly in the client's chat composer.
 
-For Codex, state the device in your request, such as “use CPU” or “use the Metal GPU.” If Blender is not on `PATH`, provide its executable path with API option `--blender /path/to/blender`, or tell the Skill where it is installed.
-
-## 4. Prepare inputs and choose the output
-
-Choose one main input. Use absolute paths and a **new, empty output directory outside the repository**.
-
-| Input | API arguments | Workflow |
+| Input | API argument | Provide in Codex |
 | --- | --- | --- |
-| Video URL | `--video-url URL` | Extract tutorial → optionally reconstruct in Blender |
-| Local video | `--video-file /path/to/tutorial.mp4` | Same workflow, using the local video |
-| Video with a starter project | Video argument + `--asset /path/to/starter.blend` | Extract tutorial with supplied inputs → optionally reconstruct from the starter |
-| Markdown tutorial | `--tutorial /path/to/tutorial.md` | Prepare the existing tutorial → optionally reconstruct; no video extraction |
+| Local video | `--video-file` | Absolute path to the video |
+| Video URL | `--video-url` | Full HTTPS video URL |
+| Markdown tutorial | `--tutorial` | Absolute path to the `.md` file |
 
-Supply the resources the tutorial actually needs:
+Markdown tutorials need numbered operations and their referenced images. Text-only tutorials also require a final reference image.
 
-- `--asset-root /path/to/project`: complete project folder containing `--asset`, including its dependencies.
-- `--input-asset /path/to/textures`: additional file or directory; repeat for multiple resources.
-- `--preview /path/to/starter.png`: starting-state image; `--target-image /path/to/final.png`: finished-result reference.
-
-Markdown may contain local or base64 images. Keep local images with the document. For full reconstruction from text-only Markdown, supply a finished-result image with `--target-image`. A starting-state preview is not a substitute for that image.
-
-Two video-to-tutorial methods are available: **`visual`** (default, local images; recommended for tutorials no longer than 10 minutes) and **`legacy-rich`** (the original chronological Markdown workflow with base64 images). Select with `--tutorial-method visual` or `--tutorial-method legacy-rich`.
-
-| Requested result | Output |
-| --- | --- |
-| Tutorial only | `tutorial.md`, associated images and tutorial data; optional `illustrated_tutorial.html` |
-| Full reconstruction | Tutorial outputs plus `reproduce.py`, `asset.blend`, `render.png`, `six_views/`, and `pipeline_review.json`; animation results include `final_effect.mp4` when applicable |
-
-Add `--render-html` to produce the readable HTML version. Existing input files are preserved; results are written to `--output-dir`.
-
-## 5. Start with API or Codex
-
-<a id="api-start"></a>
-**API**
-
-Create a private configuration once:
-
-```bash
-CFG="$HOME/.config/blender-pipeline/pipeline.json"
-python run_api.py --configure --config "$CFG"
-```
-
-The setup asks exactly two questions:
+Choose a new or empty output directory outside the repository: use `--output-dir` in API mode, or specify it in the Codex conversation. Output formats are fixed; main files appear as their corresponding stages complete:
 
 ```text
-HTTPS Chat Completions endpoint: https://YOUR_PROVIDER/v1/chat/completions
-API key (hidden):
+run_001/
+  tutorial.md             # Illustrated tutorial
+  reproduce.py            # Blender Python code
+  asset.blend             # Editable project
+  render.png              # Rendered image
+  six_views/              # Static multi-view renders, when applicable
+  final_effect.mp4        # Animation or turntable video, when applicable
+  pipeline_review.json    # Review results
 ```
 
-The key is stored separately from the configuration and outside the repository. The configured model defaults to `gpt-5.6-sol`.
+## 5. Start with API / Codex
 
-API runs perform full reconstruction by default, without a goal-selection prompt. Use `--extract-only` for tutorial output only:
+### API
+
+Open a terminal at the repository root and run this command for first-time setup:
 
 ```bash
-# Video URL → Blender project and renders
-python run_api.py --config "$CFG" \
-  --video-url "https://www.bilibili.com/video/BVID/" \
-  --output-dir /path/to/data/video_run
-
-# Local video + starter project and preview → full reconstruction
-python run_api.py --config "$CFG" \
-  --video-file /path/to/input/tutorial.mp4 \
-  --asset /path/to/input/project/starter.blend \
-  --asset-root /path/to/input/project \
-  --preview /path/to/input/project/starter.png \
-  --output-dir /path/to/data/asset_run
-
-# Existing Markdown + finished-result reference → full reconstruction
-python run_api.py --config "$CFG" \
-  --tutorial /path/to/input/tutorial.md \
-  --target-image /path/to/input/final.png \
-  --output-dir /path/to/data/markdown_run
-
-# Video → Markdown and readable HTML only
-python run_api.py --config "$CFG" \
-  --video-file /path/to/input/tutorial.mp4 \
-  --extract-only --render-html \
-  --output-dir /path/to/data/tutorial_run
+python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.json"
 ```
 
-<a id="codex-start"></a>
-**Codex**
+At the terminal prompts, enter an HTTPS API endpoint ending in `/chat/completions` and your API key. The endpoint is saved in the `endpoint` field of `~/.config/blender-pipeline/pipeline.json`; the key is saved in `model_api_key` in the same directory. Edit these files to change the configuration later.
 
-Select **Blender Pipeline** and send your input in natural language; there is no Python command to enter. If the goal is unclear, the Skill first asks:
+Launch from the same terminal, replacing the input path and output directory with your own. Use the corresponding argument from step 4 for other input types:
 
-> Do you want only an illustrated tutorial, or should I continue to reconstruct the Blender result?
+```bash
+python run_api.py --config "$HOME/.config/blender-pipeline/pipeline.json" \
+  --video-file /path/to/input/tutorial.mp4 --output-dir /path/to/data/run_api
+```
 
-For Markdown, the choice is to prepare the existing tutorial or reconstruct its result. An explicit goal is used directly, without asking again. Example requests:
+For a tutorial with a starting project, append `--asset /path/to/starter.blend`; for a text-only tutorial, append `--target-image /path/to/target.png`.
 
-- “Video: `https://www.bilibili.com/video/BVID/`. Extract the tutorial only, including HTML. Save to `/path/to/data/tutorial_run`.”
-- “Video: `/path/to/input/tutorial.mp4`; starter project: `/path/to/input/project/starter.blend`; project folder: `/path/to/input/project`; preview: `/path/to/input/project/starter.png`. Reconstruct the result using CPU and save to `/path/to/data/asset_run`.”
-- “Tutorial: `/path/to/input/tutorial.md`; finished-result image: `/path/to/input/final.png`. Reconstruct the asset and save to `/path/to/data/markdown_run`.”
+<a id="codex"></a>
 
-The Skill collects any missing input or output location, runs the chosen workflow, and returns links to the resulting files.
+### Codex
+
+Type `/blender-pipeline` in the chat composer:
+
+```text
+/blender-pipeline
+Input: /path/to/input/tutorial.mp4
+Output: /path/to/data/run_skill
+```
+
+You can replace the input with a full video URL or a Markdown tutorial path. Include paths to any supporting project or reference images in the same message.
+
+## Knowledge structure
+
+Knowledge is stored as Markdown with explanatory text and optional code snippets, then split into a JSONL index with source metadata. Example format:
+
+````markdown
+## Create a cube
+Add a cube with an edge length of 2.
+
+```python
+import bpy
+bpy.ops.mesh.primitive_cube_add(size=2)
+```
+````
+
+Each run builds a local index from the bundled knowledge, which can be rebuilt after editing the knowledge documents. Successful experience can be collected as candidates and merged by source identity after [review](skills/blender-pipeline/knowledge/operations-and-knowledge.md), skipping unchanged records and updating or adding entries.

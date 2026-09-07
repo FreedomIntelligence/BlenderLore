@@ -99,7 +99,7 @@
       <br><strong>Vintage Racing Car</strong>
     </td>
   </tr>
-  <tr>
+  <!-- <tr>
     <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">编辑 · 沙发材质更换</th>
   </tr>
   <tr>
@@ -119,7 +119,7 @@
       <img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:280px">
       <br><strong>Change 3</strong>
     </td>
-  </tr>
+  </tr> -->
 </table>
 
 

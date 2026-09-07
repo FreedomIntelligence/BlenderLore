@@ -49,8 +49,10 @@ Keep input files on your computer. For API mode, enter their paths in the termin
 | Input | API argument | Provide in Codex |
 | --- | --- | --- |
 | Local video | `--video-file` | Absolute path to the video |
-| Video URL | `--video-url` | Full HTTPS video URL |
+| Video URL | `--video-url` (one per run) | Full HTTPS video URLs; multiple links are accepted, one per line |
 | Markdown tutorial | `--tutorial` | Absolute path to the `.md` file |
+
+Multiple links produce separate results: Codex runs each video in its own output subdirectory; with the API, run the command once per link with a different output directory.
 
 Markdown tutorials need numbered operations and their referenced images. Text-only tutorials also require a final reference image.
 
@@ -79,12 +81,21 @@ python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.
 
 At the terminal prompts, enter an HTTPS API endpoint ending in `/chat/completions` and your API key. The endpoint is saved in the `endpoint` field of `~/.config/blender-pipeline/pipeline.json`; the key is saved in `model_api_key` in the same directory. Edit these files to change the configuration later.
 
-Launch from the same terminal, replacing the input path and output directory with your own. Use the corresponding argument from step 4 for other input types:
+**Minimal example: Asuka stained-glass window.** The [example directory](examples/asuka-stained-glass) contains the [video link](examples/asuka-stained-glass/video_url.txt) and [input illustration](examples/asuka-stained-glass/input.png). The illustration supplies the window pattern, not a finished-result reference; no starter `.blend` is required.
+
+![Asuka illustration supplied as the window-pattern input](examples/asuka-stained-glass/input.png)
+
+After setup, run this complete command from the repository root. It follows the [video tutorial](https://www.bilibili.com/video/BV18xqdBYEEv/) using the supplied illustration, then generates the Blender project and renders:
 
 ```bash
 python run_api.py --config "$HOME/.config/blender-pipeline/pipeline.json" \
-  --video-file /path/to/input/tutorial.mp4 --output-dir /path/to/data/run_api
+  --video-url "https://www.bilibili.com/video/BV18xqdBYEEv/" \
+  --input-asset "$PWD/examples/asuka-stained-glass/input.png" \
+  --title "Asuka Stained Glass" \
+  --output-dir "$PWD/../blender-results/asuka-api"
 ```
+
+To use another input, replace the video argument as shown in step 4. Additional input images use `--input-asset /path/to/image.png`.
 
 For a tutorial with a starting project, append `--asset /path/to/starter.blend`; for a text-only tutorial, append `--target-image /path/to/target.png`.
 
@@ -92,15 +103,17 @@ For a tutorial with a starting project, append `--asset /path/to/starter.blend`;
 
 ### Codex
 
-Type `/blender-pipeline` in the chat composer:
+Open this repository in Codex, select **Blender Pipeline**, and send the following request (or mention `$blender-pipeline` directly):
 
 ```text
-/blender-pipeline
-Input: /path/to/input/tutorial.mp4
-Output: /path/to/data/run_skill
+$blender-pipeline
+Task: Fully reconstruct the Asuka stained-glass window and deliver the Blender project and renders.
+Video: https://www.bilibili.com/video/BV18xqdBYEEv/
+Pattern input: examples/asuka-stained-glass/input.png (use as the window pattern, not the final reference)
+Output: ../blender-results/asuka-codex
 ```
 
-You can replace the input with a full video URL or a Markdown tutorial path. Include paths to any supporting project or reference images in the same message.
+Paths in this example are relative to the repository root. You can provide multiple video links, one per line, or replace the video with a local file or Markdown tutorial. Include any supporting files in the same message. Codex runs the pipeline; there is no separate Python command to enter.
 
 ## Knowledge structure
 

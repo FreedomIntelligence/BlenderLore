@@ -49,8 +49,10 @@ export VIDEO2BLENDER_CYCLES_BACKEND=CPU
 | 输入 | API 参数 | Codex 对话中提供 |
 | --- | --- | --- |
 | 本地视频 | `--video-file` | 视频文件的绝对路径 |
-| 视频链接 | `--video-url` | 完整 HTTPS 视频链接 |
+| 视频链接 | `--video-url`（每次一个） | 完整 HTTPS 视频链接，可放多个链接，每行一个 |
 | Markdown 教程 | `--tutorial` | `.md` 文件的绝对路径 |
+
+多个链接分别生成结果：Codex 会逐个运行，保存到不同输出子目录；API 按每个链接执行一次命令，并使用不同输出目录。
 
 Markdown 教程需包含编号操作和引用的图片；纯文字教程还需提供最终参考图。
 
@@ -79,12 +81,21 @@ python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.
 
 按终端提示输入以 `/chat/completions` 结尾的 HTTPS API 地址和密钥。地址保存在 `~/.config/blender-pipeline/pipeline.json` 的 `endpoint` 字段，密钥保存在同目录的 `model_api_key`；后续可直接编辑这两个文件修改配置。
 
-在同一终端启动，将参数后的输入路径和输出目录换成实际位置；其他输入类型使用第 4 步对应参数：
+**最小示例：明日香玻璃窗花。** [示例目录](examples/asuka-stained-glass)包含[视频链接](examples/asuka-stained-glass/video_url.txt)和[输入插画](examples/asuka-stained-glass/input.png)。插画用于制作窗花图案，不是最终效果参考图；本例不需要配套 `.blend` 工程。
+
+![作为窗花图案输入的明日香原始插画](examples/asuka-stained-glass/input.png)
+
+完成配置后，在仓库根目录运行以下完整命令，结合[视频教程](https://www.bilibili.com/video/BV18xqdBYEEv/)和输入插画，生成 Blender 工程及渲染结果：
 
 ```bash
 python run_api.py --config "$HOME/.config/blender-pipeline/pipeline.json" \
-  --video-file /path/to/input/tutorial.mp4 --output-dir /path/to/data/run_api
+  --video-url "https://www.bilibili.com/video/BV18xqdBYEEv/" \
+  --input-asset "$PWD/examples/asuka-stained-glass/input.png" \
+  --title "Asuka Stained Glass" \
+  --output-dir "$PWD/../blender-results/asuka-api"
 ```
+
+使用其他输入时，按第 4 步替换视频参数；附加输入图片使用 `--input-asset /path/to/image.png`。
 
 教程有配套工程时，在命令后追加 `--asset /path/to/starter.blend`；纯文字教程追加 `--target-image /path/to/target.png`。
 
@@ -92,15 +103,17 @@ python run_api.py --config "$HOME/.config/blender-pipeline/pipeline.json" \
 
 ### Codex
 
-在对话框输入 `/blender-pipeline`：
+在 Codex 中打开本仓库目录，选择 **Blender Pipeline**，发送下面这段完整请求（也可直接输入 `$blender-pipeline` 引用 Skill）：
 
 ```text
-/blender-pipeline
-输入：/path/to/input/tutorial.mp4
-输出：/path/to/data/run_skill
+$blender-pipeline
+任务：完整复现明日香玻璃窗花，交付 Blender 工程和渲染结果。
+视频：https://www.bilibili.com/video/BV18xqdBYEEv/
+图案输入：examples/asuka-stained-glass/input.png（用作窗花图案，不是最终效果图）
+输出：../blender-results/asuka-codex
 ```
 
-输入也可换成完整视频链接或 Markdown 教程路径；有配套工程或参考图时，在同一条消息中附上文件路径。
+示例中的路径相对于仓库根目录。视频位置可以放多个链接，每行一个，也可换成本地视频或 Markdown 教程路径；配套文件放在同一条消息中。Codex 会执行 pipeline，无需另行输入 Python 启动命令。
 
 ## 知识库结构
 

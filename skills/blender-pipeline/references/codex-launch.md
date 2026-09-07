@@ -24,6 +24,14 @@ the Skill's generic selection prompt as authorization for reconstruction.
 Wait for the answer; combine genuinely missing source/output questions when
 possible. Follow the user's latest choice, not a default inferred from input type.
 
+Accept multiple independent video links in one message. Run them sequentially,
+with one `--video-url` per helper invocation and a separate subject/BVID-named
+child directory under the selected output root. Ask about the goal once for
+the batch, not once per video; preserve any explicitly different per-video goals
+and supporting inputs. Do not pass a list or repeat `--video-url` in one call.
+If the user intends several videos to contribute to a single asset, clarify
+that separate runs do not merge tutorials instead of silently discarding links.
+
 Select one primary source and preserve each attachment's actual role:
 
 | Supplied input | Internal argument |

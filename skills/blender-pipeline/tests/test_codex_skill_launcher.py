@@ -238,6 +238,43 @@ class CodexSkillLauncherTests(unittest.TestCase):
         )
         self.assert_full_plan(result, output, "video_assets")
 
+    def test_packaged_asuka_example_uses_pattern_image_for_both_launchers(self):
+        from PIL import Image
+
+        example = REPO / "examples" / "asuka-stained-glass"
+        url = (example / "video_url.txt").read_text(encoding="utf-8").strip()
+        pattern = example / "input.png"
+        self.assertEqual("https://www.bilibili.com/video/BV18xqdBYEEv/", url)
+        with Image.open(pattern) as image:
+            image.verify()
+        for script, provider in ((REPO / "run_api.py", "api"), (SCRIPT, "codex-cli")):
+            with self.subTest(provider=provider):
+                output = self.root / ("asuka " + provider)
+                result = self.invoke(
+                    script,
+                    [
+                        "--video-url",
+                        url,
+                        "--input-asset",
+                        str(pattern),
+                        "--title",
+                        "Asuka Stained Glass",
+                        "--output-dir",
+                        str(output),
+                        "--dry-run",
+                    ],
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                plan = json.loads(result.stdout)
+                self.assertEqual(provider, plan["provider"])
+                self.assertEqual([str(pattern)], plan["supporting_inputs"])
+                self.assertIsNone(plan["input_project"])
+                self.assertIsNone(plan["target_image"])
+                self.assertFalse(plan["extract_only"])
+                self.assertFalse(plan["rw1_required"])
+                self.assertIn("existing strict Blender replay", plan["stages"])
+                self.assertFalse(output.exists())
+
     def test_subprocess_preserves_validation_failure_exit_code(self):
         for script in (SCRIPT, REPO / "run_codex.py"):
             with self.subTest(script=script.name):

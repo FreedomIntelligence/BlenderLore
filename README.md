@@ -1,33 +1,94 @@
-# BlenderLore
+English | <a href="README_zh-CN.md">简体中文</a>
+
+<h2 align="center">BlenderLore: Learning 3D Coding from Internet Tutorial Videos</h2>
 
 <p align="center">
-  <strong>Learning 3D Coding from Internet Tutorial Videos</strong>
+  <strong>If you like our project, please give us a star ⭐ on GitHub for the latest update.
+</strong>
 </p>
 
 <p align="center">
-  English | <a href="README_zh-CN.md">简体中文</a>
-</p>
-
-<p align="center">
-  <a href="https://3d-coding-blender.github.io/"><img src="https://img.shields.io/badge/Project-Website-7b61ff" alt="Project Website"></a>
-  <a href="https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io"><img src="https://img.shields.io/badge/GitHub-Repository-111111.svg?logo=github" alt="GitHub Repository"></a>
+  <a href="https://blenderlore.github.io/"><img src="https://img.shields.io/badge/Project-Website-7b61ff" alt="Project Website"></a>
+  <a href="https://github.com/FreedomIntelligence/BlenderLore"><img src="https://img.shields.io/badge/GitHub-Repository-111111.svg?logo=github" alt="GitHub Repository"></a>
   <a href="https://huggingface.co/"><img src="https://img.shields.io/badge/HuggingFace-Dataset-f6c344.svg?logo=huggingface" alt="Hugging Face Dataset"></a>
   <img src="https://img.shields.io/badge/Paper-Coming_Soon-8f7ad8" alt="Paper Coming Soon">
 </p>
 
-> **Status:** Research prototype. The paper and dataset will be released soon.
+#### Generation · Material
 
-## Overview
+Generate procedural, physically-based Blender materials directly from tutorial videos.
 
-Internet Blender tutorials contain rich, real-world creation knowledge, but that knowledge is difficult for an agent to use directly. Important instructions may appear in narration, on-screen captions, changing interface states, or brief node-graph operations.
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Black%20Wukong.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Gold%20Foil%20Card.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Laser%20Card%20.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Procedural%20Fur%20Ball.mp4" controls style="width:100%"></video></td>
+  </tr>
+</table>
 
-BlenderLore converts tutorial videos into timestamped multimodal evidence, reconstructs the demonstrated workflow, and generates executable Blender Python. Each run delivers an editable Blender project, a reproduction script, renders, and validation results.
+#### Generation · Objects
 
-Generalization is central to BlenderLore. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge, and recombines it into task-specific Blender code.
+Reconstruct complete 3D object models and their modeling workflow from tutorial videos.
 
-## Method
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bear%20Ice%20Zongzi.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bee%20Keycap.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bow.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Tulip.mp4" controls style="width:100%"></video></td>
+  </tr>
+</table>
 
-![BlenderLore pipeline overview](https://BlenderLore.github.io/assets/method-pipeline.png)
+#### Editing · Duck Gigi
+
+Apply natural-language edit instructions to a reconstructed asset and produce multiple edited variants.
+
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Duck%20Gigi.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change%201.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change%202.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change3.mp4" controls style="width:100%"></video></td>
+  </tr>
+</table>
+
+#### Editing · Glass Heart Material Transfer
+
+Transfer a reconstructed material from one asset onto several unrelated target assets.
+
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Glass%20Heart.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Female%20Bust.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Frog%20Traveler.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Vintage%20Racing%20Car.mp4" controls style="width:100%"></video></td>
+  </tr>
+</table>
+
+#### Editing · Sofa
+
+Apply natural-language edit instructions to a reconstructed sofa asset and produce multiple edited variants.
+
+<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Sofa.png" style="width:100%"></td>
+    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%201.png" style="width:100%"></td>
+    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%202.png" style="width:100%"></td>
+    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:100%"></td>
+  </tr>
+</table>
+
+
+## 🔭 Overview
+
+Internet Blender tutorials contain rich, real-world creation knowledge, but that knowledge is difficult for an agent to use directly. Important instructions may appear in narration, on-screen captions, changing interface states, or brief node-graph operations. BlenderLore converts tutorial videos into timestamped multimodal evidence, reconstructs the demonstrated workflow, and generates executable Blender Python. Each run delivers an editable Blender project, a reproduction script, renders, and validation results.
+
+**Generalization is central to BlenderLore**. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge, and recombines it into task-specific Blender code.
+
+## 🧩 Method
+
+![BlenderLore pipeline overview](https://blenderlore.github.io/assets/method-pipeline.png?v=20260830-v2)
 
 1. **Collect tutorials** — select a high-quality Blender tutorial and define the target asset or supported motion.
 2. **Recover evidence** — align visual keyframes, OCR, narration, timestamps, interface actions, and Blender-version cues.
@@ -35,7 +96,11 @@ Generalization is central to BlenderLore. Successful reconstructions are retaine
 4. **Code, run, and repair** — generate Blender Python, execute it, render the scene, compare the result, and repair failures.
 5. **Verify and retain** — package editable assets and visual evidence, then retain validated patterns for future tasks.
 
-## What You Get
+## 🎁 What You Get
+
+<table>
+<tr>
+<td width="33%" valign="top">
 
 ### 01 · An End-to-End Agent Pipeline
 
@@ -49,15 +114,25 @@ Each run recreates a tutorial workflow and delivers an editable Blender project,
 - Animation
 - Agent Log
 
+</td>
+<td width="33%" valign="top">
+
 ### 02 · A High-Quality 3D Dataset
 
 Through collection, repair, and reconstruction, we built a high-quality dataset of 23K procedural 3D assets.
+
+</td>
+<td width="33%" valign="top">
 
 ### 03 · A Reusable Procedural Knowledge Library
 
 Successful workflows are retained as reusable procedural knowledge. For unfamiliar targets, the agent decomposes the task, retrieves relevant patterns, and recombines them into task-specific Blender code.
 
-## Quick Start
+</td>
+</tr>
+</table>
+
+## 🚀 Quick Start
 
 ### 1. Install prerequisites
 
@@ -100,10 +175,8 @@ Keep input files on your computer. For API mode, enter their paths in the termin
 | Input | API argument | Provide in Codex |
 | --- | --- | --- |
 | Local video | `--video-file` | Absolute path to the video |
-| Video URL | `--video-url` (one per run) | Full HTTPS video URLs; multiple links are accepted, one per line |
+| Video URL | `--video-url` | Full HTTPS video URL |
 | Markdown tutorial | `--tutorial` | Absolute path to the `.md` file |
-
-Multiple links produce separate results: Codex runs each video in its own output subdirectory; with the API, run the command once per link with a different output directory.
 
 Markdown tutorials need numbered operations and their referenced images. Text-only tutorials also require a final reference image.
 
@@ -130,67 +203,50 @@ Open a terminal at the repository root and run this command for first-time setup
 python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.json"
 ```
 
-Enter the three API settings at the terminal prompts:
+At the terminal prompts, enter an HTTPS API endpoint ending in `/chat/completions` and your API key. The endpoint is saved in the `endpoint` field of `~/.config/blender-pipeline/pipeline.json`; the key is saved in `model_api_key` in the same directory. Edit these files to change the configuration later.
 
-```text
-HTTPS Chat Completions endpoint: https://YOUR_PROVIDER/v1/chat/completions
-API key (hidden):
-Model [gpt-5.6-sol]: YOUR_MODEL_ID
-```
-
-Use the model ID supplied by your provider; the model must support image input and tool calls. Press Enter to keep the default. The URL and model are saved as `endpoint` and `model` in `~/.config/blender-pipeline/pipeline.json`; the key is saved separately in `model_api_key` in the same directory. Edit these files later, or add `--model "YOUR_MODEL_ID"` to a launch command to override the saved model for that run.
-
-**Minimal example: Asuka stained-glass window.** The [example directory](examples/asuka-stained-glass) contains the [video link](examples/asuka-stained-glass/video_url.txt) and [input illustration](examples/asuka-stained-glass/input.png). The illustration supplies the window pattern, not a finished-result reference; no starter `.blend` is required.
-
-![Asuka illustration supplied as the window-pattern input](examples/asuka-stained-glass/input.png)
-
-After setup, run this complete command from the repository root. It follows the [video tutorial](https://www.bilibili.com/video/BV18xqdBYEEv/) using the supplied illustration, then generates the Blender project and renders:
+Launch from the same terminal, replacing the input path and output directory with your own. Use the corresponding argument from step 4 for other input types:
 
 ```bash
 python run_api.py --config "$HOME/.config/blender-pipeline/pipeline.json" \
-  --video-url "https://www.bilibili.com/video/BV18xqdBYEEv/" \
-  --input-asset "$PWD/examples/asuka-stained-glass/input.png" \
-  --title "Asuka Stained Glass" \
-  --output-dir "$PWD/../blender-results/asuka-api"
+  --video-file /path/to/input/tutorial.mp4 --output-dir /path/to/data/run_api
 ```
-
-To use another input, replace the video argument as shown in step 4. Additional input images use `--input-asset /path/to/image.png`.
 
 For a tutorial with a starting project, append `--asset /path/to/starter.blend`; for a text-only tutorial, append `--target-image /path/to/target.png`.
 
-<a id="codex"></a>
-
 #### Codex
 
-Open this repository in Codex, select **Blender Pipeline**, and send the following request (or mention `$blender-pipeline` directly):
+Type `/blender-pipeline` in the chat composer:
 
 ```text
-$blender-pipeline
-Task: Fully reconstruct the Asuka stained-glass window and deliver the Blender project and renders.
-Video: https://www.bilibili.com/video/BV18xqdBYEEv/
-Pattern input: examples/asuka-stained-glass/input.png (use as the window pattern, not the final reference)
-Output: ../blender-results/asuka-codex
+/blender-pipeline
+Input: /path/to/input/tutorial.mp4
+Output: /path/to/data/run_skill
 ```
 
-Paths in this example are relative to the repository root. You can provide multiple video links, one per line, or replace the video with a local file or Markdown tutorial. Include any supporting files in the same message. Codex runs the pipeline; there is no separate Python command to enter.
+You can replace the input with a full video URL or a Markdown tutorial path. Include paths to any supporting project or reference images in the same message.
 
-## Citation
+## 📖 Citation
 
 ```bibtex
 @misc{blenderlore2026,
   title        = {BlenderLore: Learning 3D Coding from Internet Tutorial Videos},
-  author       = {BlenderLore Team},
+  author       = {FreedomAI Team},
   year         = {2026},
   publisher    = {GitHub},
   journal      = {GitHub repository},
-  howpublished = {\url{https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io}},
+  howpublished = {\url{https://github.com/FreedomIntelligence/BlenderLore}},
 }
 ```
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
-This project builds on the Blender ecosystem, Three.js, and the open-source tools that make browser-based 3D visualization and reproducible graphics possible. Individual asset and tutorial credits will be added alongside the final dataset and paper release.
+This project is built upon [Blender](https://www.blender.org/), the free and open-source 3D creation suite.
 
-## License
+## 📄 License
 
-The repository license is **to be confirmed**. Please check the repository before reusing code, media, models, or tutorial-derived assets.
+This project is released under the Apache 2.0 license.
+
+## 📬 Contact
+
+For questions and feedback, please contact us at: <a href="mailto:minghaowu@link.cuhk.edu.cn">minghaowu@link.cuhk.edu.cn</a>

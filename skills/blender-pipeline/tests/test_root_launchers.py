@@ -130,7 +130,11 @@ class LauncherTests(unittest.TestCase):
         stdout = io.StringIO()
         with (
             patch(
-                "builtins.input", return_value="https://example.org/v1/chat/completions"
+                "builtins.input",
+                side_effect=[
+                    "https://example.org/v1/chat/completions",
+                    "Provider/vision-model:stable",
+                ],
             ),
             patch.object(launcher.getpass, "getpass", return_value=key),
             patch.object(launcher.os, "fstat", side_effect=owner_only),
@@ -140,6 +144,7 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(status, 0)
         config = json.loads(dest.read_text())
         self.assertEqual(set(config), {"endpoint", "api_key_file", "model"})
+        self.assertEqual("Provider/vision-model:stable", config["model"])
         key_file = Path(config["api_key_file"])
         self.assertEqual(key_file.read_text(), key)
         self.assertFalse(key_file.is_relative_to(REPO))
@@ -158,7 +163,8 @@ class LauncherTests(unittest.TestCase):
         stderr = io.StringIO()
         with (
             patch(
-                "builtins.input", return_value="https://example.org/v1/chat/completions"
+                "builtins.input",
+                side_effect=["https://example.org/v1/chat/completions", ""],
             ),
             patch.object(
                 launcher.getpass, "getpass", return_value="DUMMY_NEVER_STORED"
@@ -204,7 +210,8 @@ class LauncherTests(unittest.TestCase):
 
         with (
             patch(
-                "builtins.input", return_value="https://example.org/v1/chat/completions"
+                "builtins.input",
+                side_effect=["https://example.org/v1/chat/completions", ""],
             ),
             patch.object(
                 launcher.getpass, "getpass", return_value="DUMMY_RACED_SECRET"
@@ -224,7 +231,7 @@ class LauncherTests(unittest.TestCase):
         values = {
             "endpoint": "https://example.org/v1/chat/completions",
             "api_key_file": str(key_file),
-            "model": "gpt-5.6-sol",
+            "model": "Provider/vision-model:stable",
             "blender": "configured-blender",
         }
         config.write_text(json.dumps(values))
@@ -255,6 +262,106 @@ class LauncherTests(unittest.TestCase):
             )
         self.assertEqual(configured, explicit)
         self.assertFalse(key_file.exists())
+
+    def test_configure_default_and_explicit_model_selection(self):
+        real_fstat = os.fstat
+
+        def owner_only(fd):
+            values = list(real_fstat(fd))
+            values[0] = (values[0] & ~0o777) | 0o600
+            return os.stat_result(values)
+
+        for name, extra, answers, expected in (
+            ("default", [], [""], "gpt-5.6-sol"),
+            ("explicit", ["--model", "vendor/custom-model"], [], "vendor/custom-model"),
+            ("selected-55", [], ["gpt-5.5"], "gpt-5.5"),
+        ):
+            with self.subTest(name=name):
+                dest = self.root / name / "pipeline.json"
+                with (
+                    patch(
+                        "builtins.input",
+                        side_effect=[
+                            "https://example.org/v1/chat/completions",
+                            *answers,
+                        ],
+                    ),
+                    patch.object(
+                        launcher.getpass, "getpass", return_value="DUMMY_CONFIG_SECRET"
+                    ),
+                    patch.object(launcher.os, "fstat", side_effect=owner_only),
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    status = launcher.main(
+                        "api", ["--configure", "--config", str(dest), *extra]
+                    )
+                self.assertEqual(0, status)
+                self.assertEqual(expected, json.loads(dest.read_text())["model"])
+
+    def test_api_model_override_is_preserved_in_runtime_environment(self):
+        config = self.root / "pipeline.json"
+        config.write_text(json.dumps({"model": "vendor/config-model"}))
+        for override, expected in (
+            ([], "vendor/config-model"),
+            (["--model", "Vendor/other:stable"], "Vendor/other:stable"),
+            (["--model", "gpt-5.5"], "gpt-5.5"),
+        ):
+            with self.subTest(model=expected):
+                args = launcher.parser("api").parse_args(
+                    ["--config", str(config), "--dry-run", *override]
+                )
+                options = launcher.settings(args, "api")
+                self.assertEqual(expected, options["model"])
+                env = launcher.runtime_env(self.root / "runtime", options, "api", args)
+                self.assertEqual(expected, env["BLENDER_PIPELINE_MODEL"])
+        self.assertEqual("vendor/config-model", json.loads(config.read_text())["model"])
+
+    def test_invalid_api_model_is_rejected_without_writing_config_or_credentials(self):
+        for index, value in enumerate(
+            (
+                "",
+                "  ",
+                " model",
+                "model ",
+                "bad\nmodel",
+                "bad\x00model",
+                "bad\u2028model",
+                "x" * 257,
+            )
+        ):
+            with self.subTest(model=repr(value)):
+                dest = self.root / f"invalid-{index}" / "pipeline.json"
+                with (
+                    patch(
+                        "builtins.input",
+                        return_value="https://example.org/v1/chat/completions",
+                    ),
+                    patch.object(
+                        launcher.getpass,
+                        "getpass",
+                        return_value="DUMMY_INVALID_CONFIG_SECRET",
+                    ),
+                    contextlib.redirect_stderr(io.StringIO()),
+                ):
+                    status = launcher.main(
+                        "api", ["--configure", "--config", str(dest), "--model", value]
+                    )
+                self.assertEqual(1, status)
+                self.assertFalse(dest.parent.exists())
+
+    def test_codex_model_policy_remains_independent_of_api_model_selection(self):
+        config = self.root / "pipeline.json"
+        config.write_text(json.dumps({"model": "vendor/custom-model"}))
+        args = launcher.parser("codex-cli").parse_args(
+            ["--config", str(config), "--dry-run"]
+        )
+        with self.assertRaisesRegex(ValueError, "Codex model"):
+            launcher.settings(args, "codex-cli")
+        args = launcher.parser("codex-cli").parse_args(
+            ["--model", "gpt-5.5", "--dry-run"]
+        )
+        with self.assertRaisesRegex(ValueError, "fallback-reason"):
+            launcher.settings(args, "codex-cli")
 
     def test_video_url_validation_matches_the_extractor(self):
         fake_userinfo = ":".join(("test-user", "test-password"))

@@ -184,8 +184,10 @@ def reject_sensitive_echo(value: Any, *, key: str, endpoint: str) -> None:
 
 
 def model_identity_matches(requested: str, observed: str) -> bool:
-    """Allow deployment suffixes without permitting a model-family downgrade."""
+    """Match exact API IDs or the two documented Codex model-family aliases."""
 
+    if requested and requested == observed:
+        return True
     normalized = re.sub(r"[^a-z0-9]+", "", observed.casefold())
     if requested == "gpt-5.6-sol":
         return "gpt56sol" in normalized
@@ -194,19 +196,33 @@ def model_identity_matches(requested: str, observed: str) -> bool:
     return False
 
 
-def validate_model_fallback(model: str, fallback_reason: str = "") -> str:
-    """Enforce an auditable whole-run fallback without weakening 5.6 runs."""
+def validate_model_fallback(
+    model: str, fallback_reason: str = "", *, provider: str = "codex-cli"
+) -> str:
+    """Accept provider API IDs while retaining the explicit Codex fallback gate."""
 
-    if model not in ALLOWED_MODELS:
+    if provider not in ALLOWED_PROVIDERS:
+        raise ExtractionError("provider must be api or codex-cli")
+    if (
+        not isinstance(model, str)
+        or not model
+        or model != model.strip()
+        or len(model) > 256
+        or not all(character.isprintable() for character in model)
+    ):
+        raise ExtractionError(
+            "model must be a non-empty single-line ID of at most 256 characters without surrounding whitespace"
+        )
+    if provider == "codex-cli" and model not in ALLOWED_MODELS:
         raise ExtractionError("model must be gpt-5.6-sol or explicit fallback gpt-5.5")
     reason = fallback_reason.strip()
     if len(reason) > 500 or any(character in reason for character in "\r\n"):
         raise ExtractionError(
             "--fallback-reason must be a single line of at most 500 characters"
         )
-    if model == "gpt-5.5" and not reason:
+    if provider == "codex-cli" and model == "gpt-5.5" and not reason:
         raise ExtractionError("gpt-5.5 requires a non-empty --fallback-reason")
-    if model == "gpt-5.6-sol" and reason:
+    if provider == "codex-cli" and model == "gpt-5.6-sol" and reason:
         raise ExtractionError("--fallback-reason is forbidden when using gpt-5.6-sol")
     return reason
 
@@ -1437,10 +1453,7 @@ class ModelClient:
             raise ExtractionError(
                 "BLENDER_PIPELINE_API_ENDPOINT must be credential-free HTTPS"
             )
-        if model not in ALLOWED_MODELS:
-            raise ExtractionError(
-                "model must be gpt-5.6-sol or explicit fallback gpt-5.5"
-            )
+        validate_model_fallback(model, provider="api")
         self.endpoint = endpoint
         self.key = key
         self.model = model
@@ -1477,11 +1490,12 @@ class ModelClient:
             "messages": [{"role": "user", "content": content}],
             "temperature": 0,
             "max_tokens": self.max_output_tokens,
-            "reasoning_effort": "low",
             "stream": True,
             "stream_options": {"include_usage": True},
             "response_format": {"type": "json_object"},
         }
+        if self.model in ALLOWED_MODELS:
+            payload["reasoning_effort"] = "low"
         wire_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {
             "Authorization": f"Bearer {self.key}",
@@ -3753,7 +3767,7 @@ def extraction_plan(
 ) -> dict[str, Any]:
     if provider not in ALLOWED_PROVIDERS:
         raise ExtractionError("provider must be api or codex-cli")
-    fallback_reason = validate_model_fallback(model, fallback_reason)
+    fallback_reason = validate_model_fallback(model, fallback_reason, provider=provider)
     return {
         "schema": "video2blender-tutorial-extraction-plan.v2",
         "title": title,
@@ -3793,7 +3807,7 @@ def extract_tutorial(
 ) -> dict[str, Any]:
     if profile_name not in PROFILES:
         raise ExtractionError(f"unknown profile: {profile_name}")
-    fallback_reason = validate_model_fallback(model, fallback_reason)
+    fallback_reason = validate_model_fallback(model, fallback_reason, provider=provider)
     if provider not in ALLOWED_PROVIDERS:
         raise ExtractionError("provider must be api or codex-cli")
     if source_url:

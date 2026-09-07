@@ -79,7 +79,15 @@ Open a terminal at the repository root and run this command for first-time setup
 python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.json"
 ```
 
-At the terminal prompts, enter an HTTPS API endpoint ending in `/chat/completions` and your API key. The endpoint is saved in the `endpoint` field of `~/.config/blender-pipeline/pipeline.json`; the key is saved in `model_api_key` in the same directory. Edit these files to change the configuration later.
+Enter the three API settings at the terminal prompts:
+
+```text
+HTTPS Chat Completions endpoint: https://YOUR_PROVIDER/v1/chat/completions
+API key (hidden):
+Model [gpt-5.6-sol]: YOUR_MODEL_ID
+```
+
+Use the model ID supplied by your provider; the model must support image input and tool calls. Press Enter to keep the default. The URL and model are saved as `endpoint` and `model` in `~/.config/blender-pipeline/pipeline.json`; the key is saved separately in `model_api_key` in the same directory. Edit these files later, or add `--model "YOUR_MODEL_ID"` to a launch command to override the saved model for that run.
 
 **Minimal example: Asuka stained-glass window.** The [example directory](examples/asuka-stained-glass) contains the [video link](examples/asuka-stained-glass/video_url.txt) and [input illustration](examples/asuka-stained-glass/input.png). The illustration supplies the window pattern, not a finished-result reference; no starter `.blend` is required.
 

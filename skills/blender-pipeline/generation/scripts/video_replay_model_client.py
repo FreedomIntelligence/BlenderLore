@@ -452,6 +452,17 @@ def call_chat_completions(
 ) -> DurableModelResponse:
     """Persist, submit at most once, and replay by deterministic call identity."""
 
+    if (
+        not isinstance(model, str)
+        or not model
+        or model != model.strip()
+        or len(model) > 256
+        or not model.isprintable()
+    ):
+        raise ValueError("model must be a non-empty, single-line model ID")
+    if payload.get("model") != model:
+        raise ValueError("request payload model must match the configured model ID")
+
     if model_provider() == "codex-cli":
         return _call_codex_completions(
             video_dir=video_dir,

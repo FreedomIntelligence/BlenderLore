@@ -9,7 +9,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -17,7 +17,12 @@ sys.path.insert(0, str(SCRIPTS))
 import codex_cli_chat_bridge as bridge
 import run_video_strict_replay as replay
 import video_replay_model_client as client
-from video_replay_paid_api import PaidApiLedger, BudgetPolicy, BudgetExceeded
+from video_replay_paid_api import (
+    BudgetExceeded,
+    BudgetPolicy,
+    PaidApiLedger,
+    StoredResponse,
+)
 
 
 class CodexBridgeTests(unittest.TestCase):
@@ -242,6 +247,83 @@ class CodexBridgeTests(unittest.TestCase):
             replay.validate_generated_code_safety(
                 "import bpy\nimport json\ndef build_scene():\n    pass\n"
             )
+
+
+class ApiModelIdentityTests(unittest.TestCase):
+    def test_custom_model_is_preserved_in_wire_request_and_ledger(self):
+        model = "Vendor/Vision-Code:2026-09"
+        endpoint = "https://example.invalid/v1/chat/completions"
+        ledger = Mock()
+        ledger.prepare_call.return_value = SimpleNamespace(
+            logical_call_id="fixture", state="planned", endpoint=endpoint
+        )
+        stored = StoredResponse(
+            logical_call_id="fixture",
+            status_code=200,
+            headers={},
+            content=b'{"choices":[{"message":{"content":"done"}}]}',
+            provider_request_id="",
+            prompt_tokens=1,
+            completion_tokens=1,
+            total_tokens=2,
+            replayed=False,
+        )
+
+        def execute(_call_id, send, **_kwargs):
+            request = ledger.prepare_call.call_args.kwargs["request_payload"]
+            send(endpoint, json.dumps(request).encode("utf-8"))
+            return stored
+
+        ledger.execute.side_effect = execute
+        with (
+            patch.object(client, "task_identity", return_value="fixture"),
+            patch.object(client, "knowledge_version", return_value="fixture-v1"),
+            patch.dict(
+                os.environ,
+                {
+                    "BLENDER_PIPELINE_PROVIDER": "api",
+                    client.APPROVED_ENDPOINT_ENV: endpoint,
+                },
+            ),
+            patch.object(client, "DEFAULT_PROVIDER_USAGE_ENDPOINT", ""),
+            patch.object(client.requests, "Session") as session,
+        ):
+            result = client.call_chat_completions(
+                video_dir=Path("/unused"),
+                stage="codegen",
+                stage_key="codegen",
+                prompt_version="v1",
+                endpoint=endpoint,
+                api_key="fixture-not-a-secret",
+                model=model,
+                payload={"model": model, "messages": [], "max_tokens": 100},
+                timeout=(1, 10),
+                ledger=ledger,
+            )
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(ledger.prepare_call.call_args.kwargs["model"], model)
+        wire = json.loads(session.return_value.post.call_args.kwargs["data"])
+        self.assertEqual(wire["model"], model)
+        self.assertFalse(session.return_value.trust_env)
+
+    def test_invalid_or_mismatched_model_rejected_before_request(self):
+        with patch.object(client.requests, "Session") as session:
+            for model in (
+                "", " padded", "padded ", "line\nbreak", "x" * 257, "Vendor/Model"
+            ):
+                with self.subTest(model=model), self.assertRaises(ValueError):
+                    client.call_chat_completions(
+                        video_dir=Path("/unused"),
+                        stage="codegen",
+                        stage_key="codegen",
+                        prompt_version="v1",
+                        endpoint="https://example.invalid/v1/chat/completions",
+                        api_key="fixture-not-a-secret",
+                        model=model,
+                        payload={"model": "different-model", "messages": []},
+                        timeout=(1, 10),
+                    )
+        session.assert_not_called()
 
 
 if __name__ == "__main__":

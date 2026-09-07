@@ -79,7 +79,15 @@ run_001/
 python run_api.py --configure --config "$HOME/.config/blender-pipeline/pipeline.json"
 ```
 
-按终端提示输入以 `/chat/completions` 结尾的 HTTPS API 地址和密钥。地址保存在 `~/.config/blender-pipeline/pipeline.json` 的 `endpoint` 字段，密钥保存在同目录的 `model_api_key`；后续可直接编辑这两个文件修改配置。
+按终端提示填写 API 的三项配置：
+
+```text
+HTTPS Chat Completions endpoint: https://YOUR_PROVIDER/v1/chat/completions
+API key (hidden):
+Model [gpt-5.6-sol]: YOUR_MODEL_ID
+```
+
+Model 填写服务商提供的模型 ID，模型需支持图像输入和工具调用；直接回车保留默认值。地址和模型分别保存在 `~/.config/blender-pipeline/pipeline.json` 的 `endpoint`、`model` 字段，密钥单独保存在同目录的 `model_api_key`。后续可编辑这两个文件，或在启动命令中追加 `--model "YOUR_MODEL_ID"`，仅覆盖本次运行的模型。
 
 **最小示例：明日香玻璃窗花。** [示例目录](examples/asuka-stained-glass)包含[视频链接](examples/asuka-stained-glass/video_url.txt)和[输入插画](examples/asuka-stained-glass/input.png)。插画用于制作窗花图案，不是最终效果参考图；本例不需要配套 `.blend` 工程。
 

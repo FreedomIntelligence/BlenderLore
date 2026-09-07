@@ -104,11 +104,15 @@ def parser(provider: str) -> argparse.ArgumentParser:
     p.add_argument(
         "--profile", choices=("economy", "balanced", "forensic"), default="balanced"
     )
-    p.add_argument("--model", choices=("gpt-5.6-sol", "gpt-5.5"))
+    p.add_argument(
+        "--model",
+        choices=("gpt-5.6-sol", "gpt-5.5") if provider == "codex-cli" else None,
+        help="API: provider model ID; overrides the model saved in --config",
+    )
     p.add_argument(
         "--fallback-reason",
         default="",
-        help="Required only when selecting gpt-5.5 after sol is unavailable",
+        help="Codex only: required when selecting gpt-5.5 after sol is unavailable; optional API annotation",
     )
     p.add_argument("--transcript", type=Path)
     p.add_argument("--asr-language", default="auto")
@@ -202,6 +206,21 @@ def endpoint_url(value: str) -> str:
     return value.rstrip("/")
 
 
+def model_id(value: str) -> str:
+    """Validate a provider ID without substituting or rewriting the selection."""
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or len(value) > 256
+        or not all(character.isprintable() for character in value)
+    ):
+        raise ValueError(
+            "Model must be a nonempty single-line provider ID (up to 256 characters)"
+        )
+    return value
+
+
 def configure(args: argparse.Namespace, provider: str) -> int:
     if provider != "api" or not args.config:
         raise ValueError(
@@ -217,6 +236,11 @@ def configure(args: argparse.Namespace, provider: str) -> int:
     key = getpass.getpass("API key (hidden): ").strip()
     if not key or "\n" in key:
         raise ValueError("An API key is required")
+    model = model_id(
+        args.model
+        if args.model is not None
+        else input("Model [gpt-5.6-sol]: ").strip() or "gpt-5.6-sol"
+    )
     dest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     created = []
 
@@ -243,7 +267,7 @@ def configure(args: argparse.Namespace, provider: str) -> int:
                 {
                     "endpoint": endpoint,
                     "api_key_file": str(key_path),
-                    "model": "gpt-5.6-sol",
+                    "model": model,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -275,13 +299,18 @@ def settings(args: argparse.Namespace, provider: str) -> dict:
         not isinstance(value, str) or not value.strip() for value in config.values()
     ):
         raise ValueError("Every configuration value must be a nonempty string")
-    model = args.model or config.get("model") or "gpt-5.6-sol"
-    if model not in {"gpt-5.6-sol", "gpt-5.5"}:
-        raise ValueError("Model must be gpt-5.6-sol, or explicit gpt-5.5 fallback")
-    if (model == "gpt-5.5") != bool(args.fallback_reason.strip()):
-        raise ValueError(
-            "gpt-5.5 requires --fallback-reason; omit that reason for gpt-5.6-sol"
-        )
+    model = model_id(
+        args.model if args.model is not None else config.get("model", "gpt-5.6-sol")
+    )
+    if provider == "codex-cli":
+        if model not in {"gpt-5.6-sol", "gpt-5.5"}:
+            raise ValueError(
+                "Codex model must be gpt-5.6-sol, or explicit gpt-5.5 fallback"
+            )
+        if (model == "gpt-5.5") != bool(args.fallback_reason.strip()):
+            raise ValueError(
+                "gpt-5.5 requires --fallback-reason; omit that reason for gpt-5.6-sol"
+            )
     if args.max_replay_calls < 1 or args.max_replay_tokens < 1:
         raise ValueError("Replay budgets must be positive")
     if args.max_extraction_calls is not None and args.max_extraction_calls < 1:

@@ -54,6 +54,62 @@ class _TrajectoryStub:
 
 
 class GenerationDeliveryTests(unittest.TestCase):
+    def test_forced_api_tutorial_accepts_exact_provider_model_ids(self) -> None:
+        args = SimpleNamespace(
+            force_tutorial=True,
+            max_windows=4,
+            tutorial_provider="api",
+            tutorial_model="Vendor/Vision-Code:2026-09",
+            tutorial_fallback_reason="",
+        )
+        secret = SimpleNamespace(
+            is_file=lambda: True,
+            stat=lambda: SimpleNamespace(st_mode=0o100600),
+        )
+        with (
+            patch.object(
+                replay_main,
+                "DEFAULT_ENDPOINT",
+                "https://example.invalid/v1/chat/completions",
+            ),
+            patch.object(replay_main, "DEFAULT_SECRET", secret),
+        ):
+            replay_main.validate_forced_tutorial_runtime(args)
+            args.tutorial_model = "gpt-5.5"
+            replay_main.validate_forced_tutorial_runtime(args)
+            for invalid in (
+                "", " padded", "padded ", "line\nbreak", "control\t", "x" * 257
+            ):
+                args.tutorial_model = invalid
+                with self.subTest(invalid=invalid), self.assertRaises(RuntimeError):
+                    replay_main.validate_forced_tutorial_runtime(args)
+
+        args.tutorial_provider = "codex-cli"
+        args.tutorial_model = "Vendor/Vision-Code:2026-09"
+        with self.assertRaisesRegex(RuntimeError, "Codex tutorial extraction"):
+            replay_main.validate_forced_tutorial_runtime(args)
+        args.tutorial_model = "gpt-5.5"
+        with self.assertRaisesRegex(RuntimeError, "fallback-reason"):
+            replay_main.validate_forced_tutorial_runtime(args)
+        args.tutorial_fallback_reason = "Default unavailable"
+        replay_main.validate_forced_tutorial_runtime(args)
+
+    def test_replay_cli_does_not_reject_custom_tutorial_model(self) -> None:
+        model = "Vendor/Vision-Code:2026-09"
+        with (
+            patch.object(
+                sys, "argv", ["replay", "--video-dir", ".", "--tutorial-model", model]
+            ),
+            patch.object(
+                replay_main,
+                "validate_forced_tutorial_runtime",
+                side_effect=RuntimeError("parsed"),
+            ) as validate,
+            self.assertRaisesRegex(RuntimeError, "parsed"),
+        ):
+            replay_main.main()
+        self.assertEqual(validate.call_args.args[0].tutorial_model, model)
+
     def test_publish_cleanup_tolerates_only_missing_entries(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -177,7 +233,7 @@ class GenerationDeliveryTests(unittest.TestCase):
                 force_tutorial=True,
                 max_windows=4,
                 tutorial_profile="balanced",
-                tutorial_model="gpt-5.6-sol",
+                tutorial_model="Vendor/Vision-Code:2026-09",
                 render_tutorial_html=False,
                 embed_max_side=1600,
             )
@@ -187,6 +243,9 @@ class GenerationDeliveryTests(unittest.TestCase):
             self.assertEqual(replay_main.TUTORIAL_EXTRACTOR, Path(captured[0][1]))
             self.assertIn("--profile", captured[0])
             self.assertIn("--model", captured[0])
+            self.assertEqual(
+                captured[0][captured[0].index("--model") + 1], args.tutorial_model
+            )
             self.assertIn("--workspace-mode", captured[0])
             self.assertEqual(
                 {"steps": [{"step_id": "STEP-001"}]},

@@ -9,7 +9,7 @@
     "status": {"enum": ["complete", "complete_with_warnings"]},
     "title": {"type": "string", "minLength": 1},
     "profile": {"enum": ["economy", "balanced", "forensic"]},
-    "model": {"enum": ["gpt-5.6-sol", "gpt-5.5"]},
+    "model": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\s\\u0000-\\u001f\\u007f\\u2028\\u2029](?:[^\\u0000-\\u001f\\u007f\\u2028\\u2029]*[^\\s\\u0000-\\u001f\\u007f\\u2028\\u2029])?$"},
     "provider": {"enum": ["api", "codex-cli"]},
     "fallback_reason": {"type": "string", "maxLength": 500},
     "created_at": {"type": "string", "format": "date-time"},
@@ -43,11 +43,15 @@
   },
   "allOf": [
     {
-      "if": {"properties": {"model": {"const": "gpt-5.5"}}},
+      "if": {"properties": {"provider": {"const": "codex-cli"}}},
+      "then": {"properties": {"model": {"enum": ["gpt-5.6-sol", "gpt-5.5"]}}}
+    },
+    {
+      "if": {"properties": {"provider": {"const": "codex-cli"}, "model": {"const": "gpt-5.5"}}},
       "then": {"properties": {"fallback_reason": {"minLength": 1}}}
     },
     {
-      "if": {"properties": {"model": {"const": "gpt-5.6-sol"}}},
+      "if": {"properties": {"provider": {"const": "codex-cli"}, "model": {"const": "gpt-5.6-sol"}}},
       "then": {"properties": {"fallback_reason": {"maxLength": 0}}}
     }
   ]

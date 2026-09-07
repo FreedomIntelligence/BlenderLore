@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from PIL import Image
@@ -89,6 +92,144 @@ def fixture(root: Path):
 
 
 class VisualTutorialTests(unittest.TestCase):
+    def test_api_model_ids_are_preserved_in_both_extraction_plans(self):
+        for method in ("visual", "legacy-rich"):
+            for model in ("vendor/gemini-example-vision", "gpt-5.5"):
+                with self.subTest(method=method, model=model):
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        cli.main(
+                            [
+                                "--video-url",
+                                "https://example.com/tutorial",
+                                "--title",
+                                "Example",
+                                "--output-dir",
+                                "/unused/dry-run",
+                                "--provider",
+                                "api",
+                                "--model",
+                                model,
+                                "--tutorial-method",
+                                method,
+                                "--dry-run",
+                            ]
+                        )
+                    plan = json.loads(output.getvalue())
+                    self.assertEqual(model, plan["model"])
+                    self.assertEqual("", plan["fallback_reason"])
+        for model in ("vendor/custom", "gpt-5.5"):
+            with self.assertRaises(visual.transport.ExtractionError):
+                visual.transport.validate_model_fallback(model)
+        for model in (
+            "",
+            " ",
+            " vendor/custom",
+            "vendor/custom\n",
+            "vendor\x00/custom",
+            "x" * 257,
+        ):
+            with (
+                self.subTest(invalid_model=model),
+                self.assertRaises(visual.transport.ExtractionError),
+            ):
+                visual.transport.validate_model_fallback(model, provider="api")
+
+    def test_api_custom_model_reaches_request_and_response_identity_gate(self):
+        model = "vendor/gemini-example-vision"
+        with tempfile.TemporaryDirectory() as raw:
+            picture = Path(raw) / "evidence.jpg"
+            Image.new("RGB", (16, 16), "white").save(picture)
+            for observed in (model, "vendor/different-model"):
+                event = {
+                    "id": "fixture-response",
+                    "model": observed,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": '{"result":"ok"}'},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 1,
+                        "completion_tokens": 1,
+                        "total_tokens": 2,
+                    },
+                }
+                response = SimpleNamespace(
+                    status_code=200,
+                    content=(
+                        "data: " + json.dumps(event) + "\n\ndata: [DONE]\n\n"
+                    ).encode(),
+                )
+                client = visual.transport.ModelClient(
+                    endpoint="https://provider.invalid/v1/chat/completions",
+                    key="fixture-key",
+                    model=model,
+                    profile=visual.transport.PROFILES["balanced"],
+                    call_budget=1,
+                )
+                with patch.object(visual.transport.requests, "Session") as session:
+                    session.return_value.post.return_value = response
+                    if observed == model:
+                        self.assertEqual(
+                            {"result": "ok"}, client.call("Inspect evidence", picture)
+                        )
+                    else:
+                        with self.assertRaises(visual.transport.ExtractionError):
+                            client.call("Inspect evidence", picture)
+                    payload = json.loads(
+                        session.return_value.post.call_args.kwargs["data"]
+                    )
+                    self.assertEqual(model, payload["model"])
+                    self.assertNotIn("reasoning_effort", payload)
+        self.assertTrue(legacy_check._model_identity_matches(model, model))
+        self.assertFalse(
+            legacy_check._model_identity_matches(model, "vendor/different-model")
+        )
+
+    def test_manifest_schema_accepts_api_model_and_keeps_codex_fallback_gate(self):
+        schema = json.loads(
+            (SCRIPTS.parent / "schemas/manifest.schema.json").read_text()
+        )
+        validator = legacy_check.jsonschema.Draft202012Validator(schema)
+        manifest = {
+            "schema": "video2blender-tutorial-manifest.v2",
+            "status": "complete",
+            "created_at": "2026-09-07T00:00:00Z",
+            "title": "Example",
+            "profile": "balanced",
+            "model": "vendor/custom-vision",
+            "provider": "api",
+            "fallback_reason": "",
+            "source": {
+                "kind": "local_file",
+                "sha256": "a" * 64,
+                "duration_seconds": 10,
+            },
+            "transcript": {},
+            "counts": {},
+            "outputs": {},
+            "warnings": [],
+            "model_usage": {
+                "calls": 1,
+                "reported_calls": 1,
+                "response_model": "vendor/custom-vision",
+                "finish_reason": "stop",
+                "call_budget": 1,
+            },
+            "raw_model_responses_persisted": False,
+            "source_video_persisted": False,
+        }
+        self.assertEqual([], list(validator.iter_errors(manifest)))
+        manifest["model"] = "gpt-5.5"
+        self.assertEqual([], list(validator.iter_errors(manifest)))
+        manifest["provider"] = "codex-cli"
+        self.assertTrue(list(validator.iter_errors(manifest)))
+        manifest["fallback_reason"] = "Requested Codex deployment unavailable"
+        self.assertEqual([], list(validator.iter_errors(manifest)))
+
     def test_quiet_command_keeps_failure_reason_without_signed_url(self):
         failure = subprocess.CalledProcessError(
             1,
@@ -301,6 +442,14 @@ class VisualTutorialTests(unittest.TestCase):
             self.assertEqual("gpt-5.6-sol", extract.call_args.kwargs["model"])
 
     def test_new_extraction_orchestration_uses_skill_not_legacy_fragments(self):
+        self._assert_extraction_orchestration("codex-cli", "gpt-5.6-sol")
+
+    def test_api_custom_model_uses_full_visual_orchestration_and_package_validation(
+        self,
+    ):
+        self._assert_extraction_orchestration("api", "vendor/custom-vision")
+
+    def _assert_extraction_orchestration(self, provider, model):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             video = root / "source.mp4"
@@ -339,6 +488,10 @@ class VisualTutorialTests(unittest.TestCase):
                     ),
                 ),
                 patch.object(visual.transport, "CodexCliModelClient", Client),
+                patch.object(visual.transport, "ModelClient", Client),
+                patch.object(
+                    visual.transport, "read_secret", return_value="fixture-key"
+                ),
                 patch.object(visual.transport, "extract_tutorial") as old_extractor,
             ):
                 manifest = visual.extract_visual_tutorial(
@@ -347,10 +500,12 @@ class VisualTutorialTests(unittest.TestCase):
                     title="完整几何流程",
                     output_dir=root / "out",
                     profile_name="balanced",
-                    model="gpt-5.6-sol",
+                    model=model,
                     transcript=None,
                     render_html_enabled=False,
-                    provider="codex-cli",
+                    provider=provider,
+                    endpoint="https://provider.invalid/v1/chat/completions",
+                    secret_file=root / "fixture.key",
                     workspace_mode=True,
                     max_calls=5,
                     cache_dir=root / "cache",
@@ -361,10 +516,12 @@ class VisualTutorialTests(unittest.TestCase):
                     title="完整几何流程",
                     output_dir=root / "out",
                     profile_name="balanced",
-                    model="gpt-5.6-sol",
+                    model=model,
                     transcript=None,
                     render_html_enabled=False,
-                    provider="codex-cli",
+                    provider=provider,
+                    endpoint="https://provider.invalid/v1/chat/completions",
+                    secret_file=root / "fixture.key",
                     workspace_mode=True,
                     max_calls=5,
                     cache_dir=root / "cache",
@@ -372,10 +529,12 @@ class VisualTutorialTests(unittest.TestCase):
                 )
             old_extractor.assert_not_called()
             self.assertEqual(visual.SCHEMA, manifest["schema"])
+            self.assertEqual(model, manifest["model"])
             self.assertEqual(4, manifest["model_usage"]["calls"])
             self.assertEqual(0, rerun["model_usage"]["calls"])
             self.assertEqual(4, rerun["model_usage"]["cache_hits"])
             self.assertEqual([], visual.validate_workspace(root / "out"))
+            self.assertEqual([], legacy_check.validate_package(root / "out"))
             self.assertFalse(list((root / "out").rglob("*.mp4")))
             self.assertFalse(list((root / "out").rglob("*.blend")))
 

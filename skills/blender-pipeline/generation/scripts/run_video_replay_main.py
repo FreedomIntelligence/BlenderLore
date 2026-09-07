@@ -1265,12 +1265,21 @@ def validate_forced_tutorial_runtime(args: argparse.Namespace) -> None:
             "forced tutorial extraction requires a credential-free HTTPS "
             "BLENDER_PIPELINE_API_ENDPOINT"
         )
-    if args.tutorial_model not in {"gpt-5.6-sol", "gpt-5.5"}:
+    model = args.tutorial_model
+    if (
+        not isinstance(model, str)
+        or not model
+        or model != model.strip()
+        or len(model) > 256
+        or not model.isprintable()
+    ):
+        raise RuntimeError("tutorial model must be a non-empty, single-line model ID")
+    if provider == "codex-cli" and model not in {"gpt-5.6-sol", "gpt-5.5"}:
         raise RuntimeError(
-            "forced tutorial extraction requires gpt-5.6-sol, with gpt-5.5 "
+            "Codex tutorial extraction requires gpt-5.6-sol, with gpt-5.5 "
             "allowed only as the explicit fallback"
         )
-    if (args.tutorial_model == "gpt-5.5") != bool(
+    if provider == "codex-cli" and (model == "gpt-5.5") != bool(
         getattr(args, "tutorial_fallback_reason", "").strip()
     ):
         raise RuntimeError(
@@ -1307,8 +1316,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--tutorial-model",
-        choices=("gpt-5.6-sol", "gpt-5.5"),
-        default="gpt-5.6-sol",
+        default=DEFAULT_MODEL,
+        help="Exact provider model ID; Codex retains its supported-model policy",
     )
     parser.add_argument("--chunk-count", type=int, default=2)
     parser.add_argument("--embed-max-side", type=int, default=1600)

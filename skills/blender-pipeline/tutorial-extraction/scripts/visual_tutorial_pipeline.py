@@ -503,7 +503,7 @@ def extract_visual_tutorial(
     max_calls: int | None = None,
     replace_existing: bool = False,
 ) -> dict:
-    transport.validate_model_fallback(model, fallback_reason)
+    transport.validate_model_fallback(model, fallback_reason, provider=provider)
     workspace = output_dir.expanduser().resolve()
     owned_package = None
     old_manifest = workspace / "tutorial_manifest.json"

@@ -188,8 +188,16 @@ class LegacyRichTests(unittest.TestCase):
                 rich.collect_assets([asset], None)
 
     def test_production_prompt_merge_embedding_and_both_transports_are_real_path(self):
-        for provider in ("api", "codex-cli"):
-            with self.subTest(provider=provider), tempfile.TemporaryDirectory() as raw:
+        for provider, model in (
+            ("api", "gpt-5.6-sol"),
+            ("codex-cli", "gpt-5.6-sol"),
+            ("api", "vendor/custom-vision"),
+            ("api", "gpt-5.5"),
+        ):
+            with (
+                self.subTest(provider=provider, model=model),
+                tempfile.TemporaryDirectory() as raw,
+            ):
                 root = Path(raw)
                 video = root / "source.mp4"
                 video.write_bytes(b"source-video-fixture")
@@ -215,7 +223,7 @@ class LegacyRichTests(unittest.TestCase):
                     title="完整教程",
                     output_dir=root / "out",
                     profile_name="balanced",
-                    model="gpt-5.6-sol",
+                    model=model,
                     transcript=None,
                     render_html_enabled=False,
                     provider=provider,
@@ -271,6 +279,7 @@ class LegacyRichTests(unittest.TestCase):
                 self.assertEqual(0, second["model_usage"]["calls"])
                 self.assertEqual(2, second["model_usage"]["cache_hits"])
                 self.assertEqual(rich.SCHEMA, first["schema"])
+                self.assertEqual(model, first["model"])
                 self.assertEqual(
                     rich.transport.sha256_path(video), first["source"]["sha256"]
                 )

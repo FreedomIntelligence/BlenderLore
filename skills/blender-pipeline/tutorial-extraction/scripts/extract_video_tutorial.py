@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Sequence
 
 from tutorial_extraction_core import (
-    ALLOWED_MODELS,
     ALLOWED_PROVIDERS,
     PROFILES,
     ExtractionError,
@@ -48,7 +47,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--profile", choices=sorted(PROFILES), default="balanced")
     parser.add_argument(
-        "--model", choices=sorted(ALLOWED_MODELS), default="gpt-5.6-sol"
+        "--model",
+        default="gpt-5.6-sol",
+        help="API model ID; codex-cli supports gpt-5.6-sol or explicit fallback gpt-5.5",
     )
     parser.add_argument("--provider", choices=sorted(ALLOWED_PROVIDERS), default="api")
     parser.add_argument(
@@ -61,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--fallback-reason",
         default="",
-        help="required for gpt-5.5 and forbidden for gpt-5.6-sol",
+        help="codex-cli only: required for gpt-5.5 and forbidden for gpt-5.6-sol",
     )
     parser.add_argument("--transcript", type=Path)
     parser.add_argument(
@@ -144,7 +145,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.provided_transcript_only and transcript is None:
         raise ExtractionError("--provided-transcript-only requires --transcript")
     profile = PROFILES[args.profile]
-    fallback_reason = validate_model_fallback(args.model, args.fallback_reason)
+    fallback_reason = validate_model_fallback(
+        args.model, args.fallback_reason, provider=args.provider
+    )
     if args.window_budget is not None and args.window_budget < 0:
         raise ExtractionError("--window-budget must be nonnegative (0 means automatic)")
     minimum_calls = 5 if args.tutorial_method == "visual" else 2

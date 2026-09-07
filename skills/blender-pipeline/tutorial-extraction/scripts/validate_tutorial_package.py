@@ -118,12 +118,7 @@ def _finite_number(value: Any) -> bool:
 
 
 def _model_identity_matches(requested: str, observed: str) -> bool:
-    normalized = re.sub(r"[^a-z0-9]+", "", observed.casefold())
-    if requested == "gpt-5.6-sol":
-        return "gpt56sol" in normalized
-    if requested == "gpt-5.5":
-        return "gpt55" in normalized and "gpt56" not in normalized
-    return False
+    return core.model_identity_matches(requested, observed)
 
 
 def _validate_schema(
@@ -270,12 +265,14 @@ def validate_package(path: Path, *, allow_workspace_source: bool = False) -> lis
     )
     if provider not in core.ALLOWED_PROVIDERS:
         issues.append("manifest provider must be api or codex-cli")
-    if requested_model == "gpt-5.5" and not fallback_reason:
+    if provider == "codex-cli" and requested_model == "gpt-5.5" and not fallback_reason:
         issues.append("gpt-5.5 manifest requires a non-empty fallback_reason")
-    if requested_model == "gpt-5.6-sol" and fallback_reason:
+    if provider == "codex-cli" and requested_model == "gpt-5.6-sol" and fallback_reason:
         issues.append("gpt-5.6-sol manifest forbids fallback_reason")
     try:
-        core.validate_model_fallback(requested_model, fallback_reason)
+        core.validate_model_fallback(
+            requested_model, fallback_reason, provider=provider
+        )
     except core.ExtractionError as exc:
         issues.append(f"manifest model fallback gate failed: {exc}")
     source = (

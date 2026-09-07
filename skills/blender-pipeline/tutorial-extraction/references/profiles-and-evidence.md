@@ -56,5 +56,7 @@ outside the learner workspace and reused on reruns.
 ## Providers and models
 
 API and authenticated Codex CLI providers reuse the existing transport and
-model identity checks. GPT-5.6-sol is the default; GPT-5.5 requires an explicit
-fallback reason. There is no automatic model substitution.
+model identity checks. GPT-5.6-sol remains the default. API mode accepts the
+provider model ID supplied by the user, including deployment aliases, without
+requiring a fallback reason. Codex mode retains GPT-5.6-sol and explicit-reason
+GPT-5.5 fallback. There is no automatic model substitution.

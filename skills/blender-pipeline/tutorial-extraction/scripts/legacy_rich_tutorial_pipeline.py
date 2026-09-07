@@ -403,7 +403,9 @@ def validate_workspace(workspace: Path) -> list[str]:
         if manifest.get("schema") != SCHEMA:
             return ["not a legacy-rich tutorial workspace"]
         transport.validate_model_fallback(
-            manifest["model"], manifest.get("fallback_reason", "")
+            manifest["model"],
+            manifest.get("fallback_reason", ""),
+            provider=manifest.get("provider", ""),
         )
         if manifest.get("provider") not in transport.ALLOWED_PROVIDERS:
             return ["legacy-rich manifest has an invalid provider"]
@@ -475,7 +477,7 @@ def extract_legacy_rich_tutorial(
     max_calls: int | None = None,
     replace_existing: bool = False,
 ) -> dict:
-    transport.validate_model_fallback(model, fallback_reason)
+    transport.validate_model_fallback(model, fallback_reason, provider=provider)
     if provider not in transport.ALLOWED_PROVIDERS:
         raise Error("provider must be api or codex-cli")
     workspace = output_dir.expanduser().resolve()

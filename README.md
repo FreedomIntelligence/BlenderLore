@@ -99,7 +99,7 @@ English | <a href="README_zh-CN.md">简体中文</a>
       <br><strong>Vintage Racing Car</strong>
     </td>
   </tr>
-  <tr>
+  <!-- <tr>
     <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Editing · Sofa Material Swaps</th>
   </tr>
   <tr>
@@ -119,7 +119,7 @@ English | <a href="README_zh-CN.md">简体中文</a>
       <img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:280px">
       <br><strong>Change 3</strong>
     </td>
-  </tr>
+  </tr> -->
 </table>
 
 

@@ -1,0 +1,379 @@
+:root {
+  /* Default to dark mode colors */
+  --bg-color: #17181c;
+  --text-color: #e7e9ee;
+  --link-color: #4d8dff;
+  --link-hover-color: #76a9ff;
+  --border-color: #4d8dff;
+  --label-bg: #2d2d2d;
+  --label-color: #4d8dff;
+  --label-hover-bg: #4d8dff;
+  --label-hover-color: #1a1a1a;
+  --highlight-bg: #2d2d2d;
+  --highlight-color: #4d8dff;
+  --date-bg: #4d8dff;
+  --date-color: #1a1a1a;
+  --subdued-text-color: #a8adb8;
+}
+
+[data-theme="light"] {
+  /* Light mode colors (only when explicitly set) */
+  --bg-color: #FFFFFF;
+  --text-color: #000000;
+  --link-color: #2f66d8;
+  --link-hover-color: #4d8dff;
+  --border-color: #2f66d8;
+  --label-bg: #FFFFFF;
+  --label-color: #2f66d8;
+  --label-hover-bg: #2f66d8;
+  --label-hover-color: #FFFFFF;
+  --highlight-bg: transparent;
+  --highlight-color: #2f66d8;
+  --date-bg: #2f66d8;
+  --date-color: #FFFFFF;
+  --subdued-text-color: #999999;
+}
+
+[data-theme="dark"] {
+  /* Dark mode colors (explicit dark mode) */
+  --bg-color: #17181c;
+  --text-color: #e7e9ee;
+  --link-color: #4d8dff;
+  --link-hover-color: #76a9ff;
+  --border-color: #4d8dff;
+  --label-bg: #2d2d2d;
+  --label-color: #4d8dff;
+  --label-hover-bg: #4d8dff;
+  --label-hover-color: #1a1a1a;
+  --highlight-bg: #2d2d2d;
+  --highlight-color: #4d8dff;
+  --date-bg: #4d8dff;
+  --date-color: #1a1a1a;
+  --subdued-text-color: #a8adb8;
+}
+
+body {
+  font-family: Roboto, sans-serif;
+  font-size: 18px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6, p, div, a, td, table, b, label, .label-info, .highlight, div, .date, button {
+  font-family: 'Roboto', sans-serif;
+}
+
+h1, h2 {
+  font-weight: 100;
+}
+
+h1 {
+  font-size: 60px;
+}
+
+h1.secondary {
+  font-size: 40px;
+}
+
+h2 {
+  font-size: 40px;
+}
+
+h4 {
+  font-size: 25px;
+}
+
+h3, h4, p, div, a, td, table, label, .label-info, .date {
+  font-weight: 300;
+}
+
+b {
+  font-weight: 500;
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--link-hover-color);
+  text-decoration: none;
+}
+
+hr {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+/* p {
+  text-align: justify;
+} */
+
+td {
+  font-size: 5px;
+  padding: 2px;
+  text-align: center;
+}
+
+table {
+  border-collapse: collapse;
+  margin-bottom: 1.3em;
+  width: 80%;
+}
+
+.current_tab {
+  font-weight: bold;
+}
+
+.subdued_text {
+  color: var(--subdued-text-color);
+  margin: 0px 1em 1em 0px;
+}
+
+.blank {
+  height: 2em;
+  clear: both;
+}
+
+.label-info {
+  color: var(--label-color);
+  background-color: var(--label-bg);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.label-info:hover, .label-info[href]:hover {
+  color: var(--label-hover-color);
+  background-color: var(--label-hover-bg);
+}
+
+.label-info:focus {
+  color: var(--label-hover-color) !important;
+  background-color: var(--label-hover-bg) !important;
+}
+
+.highlight {
+  color: var(--highlight-color);
+  background-color: var(--highlight-bg);
+  border: 1px solid var(--border-color);
+}
+
+.date {
+  color: var(--date-color);
+  background-color: var(--date-bg);
+}
+
+/* Theme toggle button — glass pill, matched to the lite-mode toggle so the
+   two corner controls form a cohesive pair. Icon-only (no text). */
+.theme-toggle {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text-color);
+  cursor: pointer;
+  line-height: 1;
+  transition:
+    color 250ms ease,
+    background 250ms ease,
+    border-color 250ms ease,
+    transform 250ms ease;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus,
+.theme-toggle:active {
+  border-color: var(--accent, #4d8dff) !important;
+  color: var(--accent, #4d8dff) !important;
+  background: rgba(77, 141, 255, 0.10) !important;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.theme-toggle .material-icons-outlined {
+  font-size: 18px;
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 20;
+}
+
+[data-theme="light"] .theme-toggle {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: var(--hairline, rgba(0, 0, 0, 0.12));
+}
+
+@media (max-width: 600px) {
+  .theme-toggle {
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+  }
+  .theme-toggle .material-icons-outlined { font-size: 16px; }
+}
+
+/* The homepage no longer exposes a theme switcher. Keep stale cached markup
+   from rendering the removed control during a rolling deploy. */
+.theme-toggle {
+  display: none !important;
+}
+
+/* Inline code styling */
+code {
+  background-color: transparent !important;
+  color: var(--link-color) !important;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Ensure pre code blocks keep their custom styling */
+pre code {
+  background-color: inherit !important;
+  color: inherit !important;
+  padding: 0 !important;
+}
+
+@media screen and (max-width: 600px) {
+  body {
+    font-size: 16px;
+  }
+} 
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Responsive carousel height for mobile devices */
+@media screen and (max-width: 768px) {
+    .carousel-video-container {
+        height: 50vh !important;
+    }
+    
+    .carousel-text-container {
+        padding: 15px 15px 70px 15px !important;
+    }
+    
+    .carousel-indicators {
+        bottom: 40px !important;
+    }
+    
+    .carousel-scroll-indicator {
+        bottom: 5px !important;
+    }
+    
+    .carousel-scroll-indicator p {
+        font-size: 12px !important;
+    }
+    
+    .carousel-scroll-indicator i {
+        font-size: 16px !important;
+    }
+    
+    /* Medium-sized profile picture on tablet */
+    img[alt="Profile picture"] {
+        height: 320px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .carousel-video-container {
+        height: 55vh !important;
+    }
+    
+    .carousel-text-container {
+        padding: 10px 10px 80px 10px !important;
+    }
+    
+    .carousel-text-container h3 {
+        font-size: 18px !important;
+    }
+    
+    .carousel-text-container p {
+        font-size: 14px !important;
+    }
+    
+    /* Overall smaller fonts for mobile */
+    body {
+        font-size: 14px !important;
+    }
+    
+    h1 {
+        font-size: 30px !important;
+    }
+    
+    h1.secondary {
+        font-size: 20px !important;
+    }
+    
+    h2 {
+        font-size: 20px !important;
+    }
+    
+    h3 {
+        font-size: 18px !important;
+    }
+    
+    h4 {
+        font-size: 16px !important;
+    }
+    
+    p, li, div {
+        font-size: 14px !important;
+        line-height: 1.4 !important;
+    }
+    
+    .btn {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
+    
+    .label {
+        font-size: 11px !important;
+    }
+    
+    /* Adjust specific sections */
+    .well p {
+        font-size: 13px !important;
+    }
+    
+    /* Smaller icons */
+    /* .fa {
+        font-size: 14px !important;
+    }
+    .ai {
+      font-size: 14px !important;
+    } */
+    
+    /* Adjust author links */
+    a {
+        font-size: 14px !important;
+    }
+    
+    /* Smaller profile picture on mobile */
+    img[alt="Profile picture"] {
+        height: 250px !important;
+    }
+}

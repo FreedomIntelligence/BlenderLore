@@ -1,0 +1,469 @@
+/* =========================================================
+   project.css — design language for project pages.
+   Layered on top of base.css. Activated by `body.project-page`.
+   Pages: sugar, frosting, matcha, MACARONS, milo.
+   ========================================================= */
+
+/* ---------- Tokens (extend base.css) ---------- */
+:root {
+  --bg-color: #0a0a0a;
+  --bg-rgb: 10, 10, 10;
+  --surface-1: rgba(255, 255, 255, 0.02);
+  --surface-2: rgba(94, 224, 214, 0.06);
+  --hairline: rgba(94, 224, 214, 0.15);
+  --hairline-strong: rgba(94, 224, 214, 0.35);
+  --accent-rgb: 94, 224, 214;
+  --accent-soft: rgba(94, 224, 214, 0.12);
+  --shadow-glow: 0 10px 40px -10px rgba(94, 224, 214, 0.25);
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+[data-theme="dark"] {
+  --bg-color: #0a0a0a;
+  --bg-rgb: 10, 10, 10;
+}
+
+[data-theme="light"] {
+  --bg-color: #FFFFFF;
+  --bg-rgb: 255, 255, 255;
+  --surface-1: rgba(0, 0, 0, 0.02);
+  --surface-2: rgba(68, 141, 135, 0.06);
+  --hairline: rgba(68, 141, 135, 0.18);
+  --hairline-strong: rgba(68, 141, 135, 0.45);
+  --accent-rgb: 68, 141, 135;
+  --accent-soft: rgba(68, 141, 135, 0.12);
+  --shadow-glow: 0 10px 40px -10px rgba(68, 141, 135, 0.25);
+}
+
+body.project-page {
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--link-color);
+}
+
+/* ---------- Typography polish ---------- */
+.project-page h1 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.project-page h1.secondary {
+  font-weight: 100;
+  letter-spacing: 0.04em;
+  color: var(--link-color);
+  margin-top: 0.6rem;
+}
+
+.project-page h2 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 100;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.01em;
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+.project-page h2.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Inline emphasis letters in section titles (e.g. "Su", "Ga", "R" in SuGaR's
+   section heading) — keep them Roboto thin like the rest of the title, but
+   recolor to the bright accent green. The inline style="color:#448D87" on
+   these <b> tags is overridden with !important. */
+.project-page h2 b,
+.project-page h2 strong {
+  font-weight: 100 !important;
+  color: var(--link-color) !important;
+}
+
+.project-page h4 {
+  font-weight: 300;
+}
+
+.project-page p { line-height: 1.7; }
+
+/* ---------- Author block / hero ---------- */
+.project-page > .container:first-of-type {
+  position: relative;
+  isolation: isolate;
+}
+.project-page > .container:first-of-type::before {
+  /* subtle accent glow behind the title */
+  content: "";
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(820px, 90vw);
+  height: 360px;
+  background: radial-gradient(closest-side, var(--accent-soft), transparent 75%);
+  filter: blur(20px);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.project-page > .container:first-of-type > .row {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: projFadeUp 800ms var(--ease-out) 100ms forwards;
+}
+.project-page > .container:first-of-type > .row:nth-child(2) {
+  animation-delay: 250ms;
+}
+
+@keyframes projFadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Author links: keep them readable, accent green */
+.project-page h4 a,
+.project-page nobr a {
+  color: var(--link-color);
+  position: relative;
+  background-image: linear-gradient(var(--link-color), var(--link-color));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  padding-bottom: 1px;
+  transition: background-size 350ms var(--ease-out);
+}
+.project-page h4 a:hover,
+.project-page nobr a:hover {
+  background-size: 100% 1px;
+}
+
+/* ---------- Section rule (animated gradient hr) ---------- */
+.project-page hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--link-color) 0%,
+    rgba(var(--accent-rgb), 0.6) 30%,
+    rgba(var(--accent-rgb), 0.2) 70%,
+    transparent 100%
+  );
+  margin: 0.5rem 0 1.6rem;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 900ms var(--ease-out);
+  opacity: 1;
+}
+.project-page hr.is-visible {
+  transform: scaleX(1);
+}
+
+/* ---------- Action buttons (.label-info pills, mirror homepage .pub-actions) ---------- */
+.project-page .label.label-info,
+.project-page a.label-info,
+.project-page button.label-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  margin: 4px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--text-color);
+  font-family: 'Roboto', sans-serif;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+  transition:
+    color 250ms var(--ease-out),
+    background 250ms var(--ease-out),
+    border-color 250ms var(--ease-out),
+    transform 250ms var(--ease-out),
+    box-shadow 250ms var(--ease-out);
+}
+.project-page .label.label-info:hover,
+.project-page .label.label-info:focus,
+.project-page a.label-info:hover,
+.project-page a.label-info:focus,
+.project-page button.label-info:hover,
+.project-page button.label-info:focus {
+  color: var(--bg-color);
+  background: var(--link-color);
+  border-color: var(--link-color);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -8px rgba(var(--accent-rgb), 0.6);
+  outline: none;
+  text-decoration: none;
+}
+/* Strip inline icon overrides that pages set (margin-top, vertical-align top, fa-lg). */
+.project-page .label.label-info i,
+.project-page a.label-info i,
+.project-page button.label-info i {
+  font-size: 13px !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  vertical-align: middle !important;
+}
+
+/* Action button row container — used on project pages (h3) and homepage (.pub-actions) */
+.project-page .action-buttons,
+.project-page .container > .row > .col-xs-12 > h3:has(.label.label-info),
+.project-page h3:has(.label.label-info) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 0; /* collapse text-node spaces & nbsp gaps between buttons */
+  text-align: center;
+  font-weight: 400;
+}
+
+/* ---------- Highlighted subheader chip (.highlight) ---------- */
+.project-page .highlight {
+  display: inline-block;
+  background: var(--accent-soft) !important;
+  color: var(--link-color) !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: 10px;
+  padding: 0.35em 1em !important;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+/* Force the chip onto its own line, centered, sitting above the figure
+   below it instead of flowing inline next to the image. */
+.project-page h4.highlight {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 1rem;
+  font-size: 15px;
+  text-align: center;
+}
+.project-page h4.highlight b {
+  font-weight: 400;
+}
+
+/* Body paragraphs inside section rows: parent <div class="row" style="text-align:center">
+   makes its descendants inherit center alignment, which centers flowing prose.
+   We left-align prose, but explicit figure captions with inline text-align
+   (e.g. <p style="text-align:center">(a) Scene 1: Bicycle</p>) keep their
+   inline alignment because inline styles always win over author CSS. */
+.project-page .row [class*="col-"] p:not([style*="text-align"]) {
+  text-align: left;
+}
+
+/* ---------- Updates list ---------- */
+.project-page ul,
+.project-page ol {
+  padding-left: 1.4rem;
+}
+.project-page ul li,
+.project-page ol li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+.project-page ul li::marker {
+  color: var(--link-color);
+}
+
+/* ---------- BibTeX / pre blocks ---------- */
+.project-page pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+[data-theme="light"] .project-page pre {
+  background: rgba(0, 0, 0, 0.04);
+}
+.project-page .card,
+.project-page .card-block {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.project-page .card-text { margin: 0; }
+
+/* ---------- Content links (subtle animated underline) ---------- */
+.project-page p a:not(.label-info),
+.project-page li a:not(.label-info),
+.project-page td a:not(.label-info) {
+  color: var(--link-color);
+  position: relative;
+  background-image: linear-gradient(var(--link-color), var(--link-color));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  padding-bottom: 1px;
+  transition: background-size 350ms var(--ease-out), color 200ms ease;
+}
+.project-page p a:not(.label-info):hover,
+.project-page li a:not(.label-info):hover,
+.project-page td a:not(.label-info):hover {
+  background-size: 100% 1px;
+  color: var(--link-hover-color);
+}
+
+/* ---------- Images: subtle lift on hover ---------- */
+.project-page .container img,
+.project-page .row img {
+  transition: transform 500ms var(--ease-out), filter 500ms var(--ease-out);
+  will-change: transform;
+}
+.project-page a:hover > img {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 12px 30px rgba(var(--accent-rgb), 0.18));
+}
+
+/* ---------- News timeline (mirror of homepage News section) ---------- */
+.project-page .news-timeline {
+  position: relative;
+  padding-left: 2.4rem;
+  margin: 0 0 1rem;
+}
+.project-page .news-timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.55rem;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--hairline-strong) 8%,
+    var(--hairline-strong) 92%,
+    transparent
+  );
+}
+.project-page .news-item {
+  position: relative;
+  padding: 0.6rem 0;
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 1.2rem;
+  align-items: baseline;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.project-page .news-item::before {
+  content: "";
+  position: absolute;
+  left: -2.04rem;
+  top: 1.05rem;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bg-color);
+  border: 1.5px solid var(--link-color);
+  box-shadow:
+    0 0 0 4px var(--bg-color),
+    0 0 12px rgba(var(--accent-rgb), 0.5);
+  transition: all 300ms var(--ease-out);
+}
+.project-page .news-item:hover::before {
+  background: var(--link-color);
+  box-shadow:
+    0 0 0 4px var(--bg-color),
+    0 0 20px rgba(var(--accent-rgb), 0.85);
+}
+.project-page .news-item .news-date {
+  font-family: 'Roboto', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--link-color);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.project-page .news-item .news-body {
+  color: var(--text-color);
+}
+
+@media (max-width: 600px) {
+  .project-page .news-item {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+    padding-left: 0.2rem;
+  }
+}
+
+/* Legacy .label.date inline pill (kept tiny, in case any pages still use it). */
+.project-page p.label.date,
+.project-page .label.date {
+  display: inline-block;
+  padding: 3px 10px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--link-color);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  vertical-align: baseline;
+  border: 1px solid var(--hairline);
+}
+
+/* ---------- Section reveal ---------- */
+.project-page .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+}
+.project-page .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Footer ---------- */
+.project-page > .container:last-of-type {
+  border-top: 1px solid var(--hairline);
+  margin-top: 4rem;
+  padding-top: 2rem !important;
+  font-size: 13px;
+  color: var(--subdued-text-color);
+}
+
+/* ---------- MILo carousel hero — gentle polish only ---------- */
+.project-page .carousel-text-container h3 {
+  letter-spacing: 0.02em;
+  font-weight: 200 !important;
+}
+.project-page .carousel-scroll-indicator p {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 12px !important;
+  font-weight: 300 !important;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .project-page h2,
+  .project-page hr,
+  .project-page .reveal,
+  .project-page > .container:first-of-type > .row {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+

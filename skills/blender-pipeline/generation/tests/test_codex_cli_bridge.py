@@ -309,7 +309,12 @@ class ApiModelIdentityTests(unittest.TestCase):
     def test_invalid_or_mismatched_model_rejected_before_request(self):
         with patch.object(client.requests, "Session") as session:
             for model in (
-                "", " padded", "padded ", "line\nbreak", "x" * 257, "Vendor/Model"
+                "",
+                " padded",
+                "padded ",
+                "line\nbreak",
+                "x" * 257,
+                "Vendor/Model",
             ):
                 with self.subTest(model=model), self.assertRaises(ValueError):
                     client.call_chat_completions(

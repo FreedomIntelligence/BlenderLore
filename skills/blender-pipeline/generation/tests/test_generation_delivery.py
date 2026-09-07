@@ -78,7 +78,12 @@ class GenerationDeliveryTests(unittest.TestCase):
             args.tutorial_model = "gpt-5.5"
             replay_main.validate_forced_tutorial_runtime(args)
             for invalid in (
-                "", " padded", "padded ", "line\nbreak", "control\t", "x" * 257
+                "",
+                " padded",
+                "padded ",
+                "line\nbreak",
+                "control\t",
+                "x" * 257,
             ):
                 args.tutorial_model = invalid
                 with self.subTest(invalid=invalid), self.assertRaises(RuntimeError):

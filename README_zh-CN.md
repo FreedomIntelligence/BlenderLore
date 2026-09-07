@@ -20,19 +20,19 @@
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/623cfa2d-633f-45b4-b85f-c8c410ed9e6a" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/623cfa2d-633f-45b4-b85f-c8c410ed9e6a" controls style="width:280px"></video>
       <br><strong>Black Wukong</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/c3874ee6-c43f-4829-933c-825e208b4975" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/c3874ee6-c43f-4829-933c-825e208b4975" controls style="width:280px"></video>
       <br><strong>Gold Foil Card</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/eb9c10f5-c372-470e-b4c8-a724ab13a37e" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/eb9c10f5-c372-470e-b4c8-a724ab13a37e" controls style="width:280px"></video>
       <br><strong>Laser Card</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/81699ce8-0624-4dab-b71b-453b1dd88863" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/81699ce8-0624-4dab-b71b-453b1dd88863" controls style="width:280px"></video>
       <br><strong>Procedural Fur Ball</strong>
     </td>
   </tr>
@@ -41,19 +41,19 @@
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/6539c231-3871-4ebb-b781-e2cd77151ddd" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/6539c231-3871-4ebb-b781-e2cd77151ddd" controls style="width:280px"></video>
       <br><strong>Bear Ice Zongzi</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/f035e0f0-77b2-429b-8938-7a18e3538835" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/f035e0f0-77b2-429b-8938-7a18e3538835" controls style="width:280px"></video>
       <br><strong>Bee Keycap</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/d6544245-9df2-49a9-a9bb-0b66d98fe22e" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/d6544245-9df2-49a9-a9bb-0b66d98fe22e" controls style="width:280px"></video>
       <br><strong>Bow</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/a497de59-bd2c-4efe-bde2-c3d2cb9f62ee" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/a497de59-bd2c-4efe-bde2-c3d2cb9f62ee" controls style="width:280px"></video>
       <br><strong>Tulip</strong>
     </td>
   </tr>
@@ -62,19 +62,19 @@
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/22805e1e-bac4-4012-84eb-ccb04ca6d2b3" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/22805e1e-bac4-4012-84eb-ccb04ca6d2b3" controls style="width:280px"></video>
       <br><strong>Duck Gigi</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/65a63214-6569-4e9c-8429-6e5ffbc9fae4" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/65a63214-6569-4e9c-8429-6e5ffbc9fae4" controls style="width:280px"></video>
       <br><strong>Change 1</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/18fa7d90-b628-4133-ae6a-192184483690" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/18fa7d90-b628-4133-ae6a-192184483690" controls style="width:280px"></video>
       <br><strong>Change 2</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/bbced62c-abd3-464b-a61e-4abc98f3fb97" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/bbced62c-abd3-464b-a61e-4abc98f3fb97" controls style="width:280px"></video>
       <br><strong>Change 3</strong>
     </td>
   </tr>
@@ -83,19 +83,19 @@
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/222ced56-5d79-4e8b-8133-792dbb3fecca" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/222ced56-5d79-4e8b-8133-792dbb3fecca" controls style="width:280px"></video>
       <br><strong>Glass Heart</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/9d84de38-6773-4dde-9291-36bed31a5487" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/9d84de38-6773-4dde-9291-36bed31a5487" controls style="width:280px"></video>
       <br><strong>Female Bust</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/ade45110-694c-4f9a-8dd6-5b08b28960fc" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/ade45110-694c-4f9a-8dd6-5b08b28960fc" controls style="width:280px"></video>
       <br><strong>Frog Traveler</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <video src="https://github.com/user-attachments/assets/a55a5f3c-6841-4eb1-8e62-6623c3854fe7" controls style="width:80%"></video>
+      <video src="https://github.com/user-attachments/assets/a55a5f3c-6841-4eb1-8e62-6623c3854fe7" controls style="width:280px"></video>
       <br><strong>Vintage Racing Car</strong>
     </td>
   </tr>
@@ -104,19 +104,19 @@
   </tr>
   <tr>
     <td align="center" style="padding: 10px;">
-      <img src="docs/show_cases/edit/Sofa/Sofa.png" style="width:80%">
+      <img src="docs/show_cases/edit/Sofa/Sofa.png" style="width:280px">
       <br><strong>Sofa</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="docs/show_cases/edit/Sofa/Change%201.png" style="width:80%">
+      <img src="docs/show_cases/edit/Sofa/Change%201.png" style="width:280px">
       <br><strong>Change 1</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="docs/show_cases/edit/Sofa/Change%202.png" style="width:80%">
+      <img src="docs/show_cases/edit/Sofa/Change%202.png" style="width:280px">
       <br><strong>Change 2</strong>
     </td>
     <td align="center" style="padding: 10px;">
-      <img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:80%">
+      <img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:280px">
       <br><strong>Change 3</strong>
     </td>
   </tr>

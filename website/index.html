@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>BlenderLore: Learning 3D Coding from Internet Tutorial Videos</title>
+  <meta name="description" content="BlenderLore — Learning 3D Coding from Internet Tutorial Videos."/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+  <meta charset="utf-8">
+
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="BlenderLore: Learning 3D Coding from Internet Tutorial Videos"/>
+  <meta property="og:description" content="An agent framework that learns reusable Blender workflows from internet tutorial videos."/>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&amp;display=swap" rel="stylesheet">
+
+  <link href="./base.css?v=20260828-no-theme-toggle" rel="stylesheet">
+  <link href="./assets/site.css?v=20260831-back-to-top1" rel="stylesheet">
+  <link href="./surflo.css?v=20260906-language-aligned1" rel="stylesheet">
+  <link href="./assets/showcase.css?v=20260831-objects-tutorial-links1" rel="stylesheet">
+
+<!--  Google Analytics (DO NOT copy/paste following section, setup your own analytics tag at https://analytics.google.com/analytics/web/)  -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CDL4R10HKE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-CDL4R10HKE');
+</script>
+<!-- End Google Analytics -->
+</head>
+
+<body class="site-modern surflo-page">
+
+  <!-- =================== HERO =================== -->
+  <header class="hero" id="top">
+    <div class="hero-stage" id="hero-animation-panel" role="tabpanel" aria-label="Selected 3D animation">
+      <canvas class="hero-canvas" id="hero-canvas" aria-hidden="true"></canvas>
+      <img class="hero-fur-poster" id="hero-fur-poster" src="./assets/models/maoqiu/maoqiu-preview.jpg?v=20260831-fur-preview" alt="Golden Fur Ball preview" aria-hidden="true">
+      <video class="hero-fur-video" id="hero-fur-video" muted loop playsinline preload="auto" poster="./assets/models/maoqiu/maoqiu-preview.jpg?v=20260831-fur-preview" aria-hidden="true">
+        <source src="./assets/models/maoqiu/maoqiu-final-effect.webm?v=20260831-fur-effect" type="video/webm">
+        <source src="./assets/models/maoqiu/maoqiu-final-effect.mp4?v=20260831-fur-effect" type="video/mp4">
+      </video>
+      <div class="hero-vignette" aria-hidden="true"></div>
+    </div>
+
+    <button type="button" class="hero-expand" id="hero-expand"
+            aria-label="Expand 3D viewer" aria-controls="hero-animation-panel"
+            aria-pressed="false" title="Expand 3D viewer">
+      <i class="fa fa-expand" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="language-toggle" id="language-toggle" aria-label="Switch to Chinese">中文</button>
+
+    <div class="hero-asset-copy-wrap" aria-live="polite">
+      <article class="hero-asset-copy" data-hero-copy="holographic-card" aria-hidden="false">
+        <h2>Holographic Foil Card</h2>
+        <p>The agent separates the character, background, text, and outline into transparent layers, then offsets them at different depths with view-dependent coordinates to create parallax. Alpha masks preserve each silhouette, while procedural Voronoi and wave patterns add iridescent highlights, sparkles, and a gold outline. Animated reflections complete a holographic foil card that shifts as it moves.</p>
+      </article>
+      <article class="hero-asset-copy" data-hero-copy="chromatic-duck" aria-hidden="true" hidden>
+        <h2>Iridescent Duck Gigi</h2>
+        <p>Duck Gigi starts from a generated PBR character whose yellow surface is replaced with a procedural iridescent material. Star textures, mapped noise, color ramps, and wave-based bands create the shifting finish; masks preserve the face, feet, and beak. Controlled emission, bloom, and keyframed shader parameters produce the animated color transitions.</p>
+      </article>
+      <article class="hero-asset-copy" data-hero-copy="stained-glass-window" aria-hidden="true" hidden>
+        <h2>Stained-Glass Asuka</h2>
+        <p>The agent first recovers the geometric setup—a thin, solidified plane that gives the material physical thickness—then rebuilds the shader graph around the source artwork. A mapped image texture provides the local colors, while a 2D Voronoi texture in Distance to Edge mode partitions the picture into irregular glass panes. ColorRamp nodes sharpen these boundaries into a reusable mask, which separates the translucent colored glass from its dark metallic leading and also drives raised and inset bump details along the seams. Additional noise-based distortion breaks up overly regular borders, introduces subtle surface waviness, and enriches the color variation inside each pane. The resulting asset adapts this procedural workflow to the Asuka artwork, preserving the original composition while giving it the depth, transmission, reflections, and handcrafted mosaic character of a luminous stained-glass window.</p>
+      </article>
+      <article class="hero-asset-copy" data-hero-copy="maoqiu" aria-hidden="true" hidden>
+        <h2>Procedural Fur Ball</h2>
+        <p>The agent starts from a compact spherical core and reconstructs a procedural hair system across its surface. Strand density, length, clumping, roughness, and direction are varied to create a soft, naturally uneven silhouette instead of a uniform shell. Warm color variation and strand-aware shading preserve depth between the fibers, while the hidden core prevents gaps as the asset rotates. The result is an editable golden fur material whose density, length, shape, and palette can be adjusted through the same procedural setup.</p>
+      </article>
+    </div>
+
+    <div class="hero-content">
+      <!-- Project title card -->
+      <figcaption class="hero-caption">
+        <span class="hero-caption-title" aria-label="BlenderLore">BlenderLore</span>
+        <span class="hero-caption-sub">
+          Learning 3D Coding from Internet Tutorial Videos.
+        </span>
+        <nav class="hero-resource-links" aria-label="Project resources">
+          <a class="hero-resource-link" href="https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io" target="_blank" rel="noopener noreferrer">
+            <i class="fa fa-github" aria-hidden="true"></i>
+            <span>Github</span>
+          </a>
+          <a class="hero-resource-link" href="https://huggingface.co/" target="_blank" rel="noopener noreferrer">
+            <svg class="hero-resource-icon hero-huggingface-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 2.25a9.75 9.75 0 1 0 9.75 9.75A9.76 9.76 0 0 0 12 2.25Z" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="8.5" cy="10.4" r="1.05" fill="currentColor"/>
+              <circle cx="15.5" cy="10.4" r="1.05" fill="currentColor"/>
+              <path d="M7.25 14.1c1.1 1.75 2.7 2.65 4.75 2.65s3.65-.9 4.75-2.65" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M4.15 14.5 2.8 16.15m17.05-1.65 1.35 1.65" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span>Dataset</span>
+          </a>
+        </nav>
+      </figcaption>
+    </div>
+
+    <div class="hero-animation-controls">
+      <div class="hero-animation-tabs" role="tablist" aria-label="3D animation selection">
+        <button type="button" class="hero-animation-tab is-active" role="tab" aria-selected="true" aria-controls="hero-animation-panel" data-hero-animation="holographic-card">Case 1 · Holographic Card</button>
+        <button type="button" class="hero-animation-tab" role="tab" aria-selected="false" aria-controls="hero-animation-panel" data-hero-animation="chromatic-duck" tabindex="-1">Case 2 · Duck Gigi</button>
+        <button type="button" class="hero-animation-tab" role="tab" aria-selected="false" aria-controls="hero-animation-panel" data-hero-animation="stained-glass-window" tabindex="-1">Case 3 · Asuka</button>
+        <button type="button" class="hero-animation-tab" role="tab" aria-selected="false" aria-controls="hero-animation-panel" data-hero-animation="maoqiu" tabindex="-1">Case 4 · Fur Ball</button>
+      </div>
+      <span class="hero-animation-loader" role="status" aria-label="Loading animation"></span>
+    </div>
+
+    <a class="hero-scroll-cue" href="#abstract" aria-label="Scroll to abstract">
+      Scroll <i class="fa fa-chevron-down"></i>
+    </a>
+  </header>
+
+  <!-- =================== PROJECT INTRODUCTION =================== -->
+  <main class="showcase-main">
+    <section id="abstract" class="showcase-intro reveal">
+      <p class="showcase-kicker">BlenderLore</p>
+      <div class="showcase-intro-grid">
+        <h2>Learning 3D Coding from Internet Tutorial Videos.</h2>
+        <div class="showcase-abstract">
+          <span class="showcase-label">Abstract</span>
+          <p>
+            Internet Blender tutorials contain rich, real-world creation knowledge, but that knowledge is difficult for an agent to use directly. Important instructions may appear in narration, on-screen captions, changing interface states, or brief node-graph operations, while the final result alone does not reveal how the asset was constructed. We present <span class="accent">BlenderLore</span>, an agent pipeline that converts tutorial videos into timestamped multimodal evidence, reconstructs the demonstrated workflow, and generates executable Blender Python from a canonical scene.
+          </p>
+          <p>
+            The agent combines visual keyframes, OCR, available transcript evidence, Blender-version cues, and retrieved workflow knowledge to build a bounded reconstruction specification. Generated programs are executed inside Blender and evaluated through fresh renders, multi-view observations, and turntable or animation evidence when motion is supported by the tutorial. The primary output is an editable <code>.blend</code> asset rather than a flattened image.
+          </p>
+          <p>
+            <span class="accent">Generalization</span> is central to BlenderLore. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge and recombines it into task-specific Blender code.
+          </p>
+        </div>
+      </div>
+
+      <nav class="showcase-jump-nav" aria-label="Page sections">
+        <a href="#method">Method</a>
+        <a href="#what-you-get">What You Get</a>
+        <a href="#generation">Generation</a>
+        <a href="#editing">Editing</a>
+        <a href="#bibtex">Citation</a>
+      </nav>
+    </section>
+
+    <!-- =================== METHOD =================== -->
+    <section id="method" class="showcase-pipeline reveal">
+      <header class="showcase-compact-heading">
+        <p class="showcase-kicker">Method</p>
+      </header>
+      <figure class="showcase-pipeline-figure">
+        <img src="./assets/method-pipeline.png?v=20260830-v2" alt="Five-stage BlenderLore pipeline from internet tutorials through multimodal evidence, workflow specification, coding-agent execution, and verified deliverables" loading="lazy" decoding="async">
+        <figcaption>BlenderLore pipeline overview</figcaption>
+      </figure>
+    </section>
+
+    <!-- =================== HOW IT WORKS =================== -->
+    <section id="how-it-works" class="showcase-method reveal">
+      <header class="showcase-compact-heading">
+        <p class="showcase-kicker">How It Works</p>
+      </header>
+
+      <div class="showcase-method-grid showcase-method-grid--five">
+        <article class="showcase-method-step showcase-method-step--primary">
+          <span class="showcase-index">01</span>
+          <h3>Collect Tutorials</h3>
+          <p>Start from high-quality internet Blender tutorials and identify the target asset, workflow, and supported motion.</p>
+        </article>
+        <article class="showcase-method-step">
+          <span class="showcase-index">02</span>
+          <h3>Recover Evidence</h3>
+          <p>Align keyframes, OCR, narration or audio, interface actions, timestamps, and Blender-version cues.</p>
+        </article>
+        <article class="showcase-method-step">
+          <span class="showcase-index">03</span>
+          <h3>Specify the Workflow</h3>
+          <p>Convert evidence into ordered operations and retrieve relevant procedural knowledge.</p>
+        </article>
+        <article class="showcase-method-step">
+          <span class="showcase-index">04</span>
+          <h3>Code, Run, Repair</h3>
+          <p>Generate Blender Python, execute it in Blender, render the scene, compare the result, and repair failures in a closed loop.</p>
+        </article>
+        <article class="showcase-method-step">
+          <span class="showcase-index">05</span>
+          <h3>Verify and Retain</h3>
+          <p>Package editable assets and visual evidence, then retain validated workflow patterns as candidate procedural knowledge for reuse.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- =================== WHAT YOU GET =================== -->
+    <section id="what-you-get" class="showcase-outcomes reveal">
+      <header class="showcase-compact-heading">
+        <p class="showcase-kicker">What You Get</p>
+      </header>
+      <div class="showcase-outcome-grid">
+        <article class="showcase-outcome-card showcase-outcome-card--primary">
+          <span class="showcase-index">01</span>
+          <h3>An End-to-End Agent Pipeline</h3>
+          <p>Each run recreates a tutorial workflow and delivers an editable Blender project, a reproduction script, renders, and validation results.</p>
+          <ul class="showcase-deliverable-list" aria-label="Reconstruction deliverables">
+            <li>Editable Asset <code>asset.blend</code></li>
+            <li>Reproduction Script <code>reproduce.py</code></li>
+            <li>Materials &amp; Node Graphs</li>
+            <li>Final Render</li>
+            <li>Multi-View Renders</li>
+            <li>Animation</li>
+            <li>Agent Log</li>
+          </ul>
+        </article>
+        <article class="showcase-outcome-card">
+          <span class="showcase-index">02</span>
+          <h3>A High-Quality 3D Dataset</h3>
+          <p>Through collection, repair, and reconstruction, we built a high-quality dataset of 23K procedural 3D assets.</p>
+        </article>
+        <article class="showcase-outcome-card">
+          <span class="showcase-index">03</span>
+          <h3>A Reusable Procedural Knowledge Library</h3>
+          <p>The procedural knowledge library serves as a key mechanism for generalization: when facing an unfamiliar target, the agent decomposes it into reusable construction patterns, retrieves relevant procedural knowledge, and recombines it into task-specific Blender code.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- =================== GENERATION =================== -->
+    <section id="generation" class="showcase-chapter reveal">
+      <header class="showcase-chapter-heading">
+        <span class="showcase-index">01</span>
+        <h2>Generation</h2>
+        <p>Tutorials become executable, editable assets.</p>
+      </header>
+
+      <div class="showcase-feature-workflow">
+        <article class="workflow-card" id="workflow-stained-glass">
+          <header class="workflow-card-header">
+            <span>Generation workflow</span>
+            <div><h3>Stained Glass Asuka</h3><p>Source image and tutorial cover to editable Blender material.</p></div>
+          </header>
+          <div class="workflow-flow">
+            <section class="workflow-stage workflow-stage--inputs" aria-label="Stained Glass Asuka inputs">
+              <span class="workflow-stage-label">Input</span>
+              <div class="workflow-input-grid">
+                <a class="workflow-media" href="./assets/workflows/stained-glass/source.png?v=20260830-asuka">
+                  <img src="./assets/workflows/stained-glass/source.png?v=20260830-asuka" alt="Original geometric Asuka artwork used to generate the stained glass material" loading="lazy" decoding="async">
+                  <span>Source image</span>
+                </a>
+                <div class="workflow-media-shell">
+                  <a class="workflow-media" href="./assets/workflows/stained-glass/tutorial-cover.png"
+                     data-original-url="https://www.bilibili.com/video/BV18xqdBYEEv/?spm_id_from=333.1387.favlist.content.click&amp;vd_source=9b2feb0a000d74ffe67c500760963d45">
+                    <img src="./assets/workflows/stained-glass/tutorial-cover.png" alt="Bilibili stained glass material tutorial cover" loading="lazy" decoding="async">
+                    <span>Tutorial cover</span>
+                  </a>
+                  <a class="workflow-original-link" href="https://www.bilibili.com/video/BV18xqdBYEEv/?spm_id_from=333.1387.favlist.content.click&amp;vd_source=9b2feb0a000d74ffe67c500760963d45" target="_blank" rel="noopener noreferrer" aria-label="Open the original Stained Glass Asuka tutorial on Bilibili">
+                    <i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span>
+                  </a>
+                </div>
+              </div>
+            </section>
+            <div class="workflow-connector" aria-hidden="true"><span>Pipeline</span><b>→</b></div>
+            <section class="workflow-stage workflow-stage--outputs" aria-label="Stained Glass Asuka pipeline outputs">
+              <span class="workflow-stage-label">Executable outputs</span>
+              <a class="workflow-media workflow-media--nodes" href="./assets/workflows/stained-glass/material-nodes.png">
+                <img src="./assets/workflows/stained-glass/material-nodes.png" alt="Compact Blender material node graph for the stained glass window" loading="lazy" decoding="async">
+                <span>Blender material nodes</span>
+              </a>
+              <div class="workflow-code-card">
+                <div><span>Blender Python</span><a href="./assets/workflows/stained-glass/reproduce.py" download>reproduce.py ↓</a></div>
+                <pre><code>image = bpy.data.images.load(SOURCE_IMAGE, check_existing=True)
+voronoi = nodes.new("ShaderNodeTexVoronoi")
+voronoi.feature = "DISTANCE_TO_EDGE"
+set_input(voronoi, "Scale", 50.0)
+bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT_DIR / "asset.blend"))</code></pre>
+              </div>
+            </section>
+            <div class="workflow-connector workflow-connector--final" aria-hidden="true"><span>Render</span><b>→</b></div>
+            <a class="workflow-result workflow-result--hero-glass" href="./assets/models/stained-glass-window.glb?v=20260829reorg1">
+              <span>Final Blender work</span>
+              <canvas class="workflow-result-canvas" data-workflow-hero="stained-glass-window" aria-label="Interactive Stained Glass Asuka Blender render"></canvas>
+              <strong>Stained Glass Asuka</strong>
+            </a>
+          </div>
+        </article>
+      </div>
+
+      <section class="showcase-asset-band" id="materials" aria-labelledby="generated-materials-title">
+        <header class="showcase-band-heading">
+          <h3 id="generated-materials-title">Material</h3>
+          <p>Tutorial-learned surfaces, shaders, and animated effects.</p>
+        </header>
+        <div class="showcase-strip showcase-strip--materials" aria-label="Generated material assets">
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1Jm5r6pE4k/">
+          <video muted loop playsinline preload="metadata" poster="./assets/showcase/material-golden-fur-ball.png?v=20260829reorg1" aria-label="Golden fur ball material turntable"><source src="./assets/showcase/material-golden-fur-ball.mp4?v=20260829reorg1" type="video/mp4"></video>
+          <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1Jm5r6pE4k/" target="_blank" rel="noopener noreferrer" aria-label="Open the Golden Fur Ball material tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a>
+          <div class="showcase-card-overlay"><span>Material · Motion</span><h3>Procedural Fur Ball</h3></div>
+        </article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1f3b16YExK/">
+          <video muted loop playsinline preload="metadata" aria-label="Black Wukong material 360-degree turntable"><source src="./assets/showcase/material-wukong.mp4?v=20260828final1" type="video/mp4"></video>
+          <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1f3b16YExK/" target="_blank" rel="noopener noreferrer" aria-label="Open the Black Wukong material tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a>
+          <div class="showcase-card-overlay"><span>Material · Motion</span><h3>Black Wukong</h3></div>
+        </article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1K1doB5Eq3/">
+          <video muted loop playsinline preload="metadata" aria-label="Opening Door cat card material sway"><source src="./assets/showcase/material-door.mp4?v=20260828final1" type="video/mp4"></video>
+          <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1K1doB5Eq3/" target="_blank" rel="noopener noreferrer" aria-label="Open the Opening Door material tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a>
+          <div class="showcase-card-overlay"><span>Material · Motion</span><h3>Gold Foil Card</h3></div>
+        </article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1313c6DEn2/">
+          <video muted loop playsinline preload="metadata" aria-label="Armor Hero material sway"><source src="./assets/showcase/material-armor-hero.mp4?v=20260828final4" type="video/mp4"></video>
+          <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1313c6DEn2/" target="_blank" rel="noopener noreferrer" aria-label="Open the Armor Hero material tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a>
+          <div class="showcase-card-overlay"><span>Material · Motion</span><h3>Laser Card</h3></div>
+        </article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1VJjd6RER4/">
+          <video muted loop playsinline preload="metadata" aria-label="Maodie two-sided material turntable"><source src="./assets/showcase/material-maodie.mp4?v=20260828final4" type="video/mp4"></video>
+          <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1VJjd6RER4/" target="_blank" rel="noopener noreferrer" aria-label="Open the Maodie material tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a>
+          <div class="showcase-card-overlay"><span>Stylized Material · Motion</span><h3>Fuse-Bead Material</h3></div>
+        </article>
+        </div>
+      </section>
+
+      <section class="showcase-asset-band" aria-labelledby="generated-objects-title">
+        <header class="showcase-band-heading">
+          <h3 id="generated-objects-title">Objects</h3>
+          <p>Editable forms, scientific visualizations, and compact scene studies.</p>
+        </header>
+        <div class="showcase-strip showcase-strip--models" aria-label="Generated objects and scenes">
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV16ikTBFEDZ/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-cat-paw-jelly-dark.png?v=20260829blackbg1" aria-label="Cat paw jelly model 360-degree turntable"><source src="./assets/showcase/model-cat-paw-jelly-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV16ikTBFEDZ/" target="_blank" rel="noopener noreferrer" aria-label="Open the Cat Paw Jelly tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Cat Paw Jelly</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1xKMg6tEfs/?spm_id_from=333.337.search-card.all.click&amp;vd_source=c739db1ebdd361d47af5a0b8497417db"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-bee-keycap-dark.png?v=20260829blackbg1" aria-label="Bee keycap model 360-degree turntable"><source src="./assets/showcase/model-bee-keycap-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1xKMg6tEfs/?spm_id_from=333.337.search-card.all.click&amp;vd_source=c739db1ebdd361d47af5a0b8497417db" target="_blank" rel="noopener noreferrer" aria-label="Open the Bee Keycap tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Bee Keycap</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1PTbJzHEYe/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-shaved-ice-dark.png?v=20260829blackbg1" aria-label="Shaved ice model 360-degree turntable"><source src="./assets/showcase/model-shaved-ice-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1PTbJzHEYe/" target="_blank" rel="noopener noreferrer" aria-label="Open the Shaved Ice tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Shaved Ice</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1vcjw6MEFa/?spm_id_from=333.337.search-card.all.click&amp;vd_source=c739db1ebdd361d47af5a0b8497417db"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-bear-ice-zongzi-dark.png?v=20260829blackbg1" aria-label="Bear ice zongzi model 360-degree turntable"><source src="./assets/showcase/model-bear-ice-zongzi-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1vcjw6MEFa/?spm_id_from=333.337.search-card.all.click&amp;vd_source=c739db1ebdd361d47af5a0b8497417db" target="_blank" rel="noopener noreferrer" aria-label="Open the Bear Ice Zongzi tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Bear Ice Zongzi</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1W5gP61E3G/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-pearl-necklace-dark.png?v=20260829blackbg1" aria-label="Pearl necklace model 360-degree turntable"><source src="./assets/showcase/model-pearl-necklace-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1W5gP61E3G/" target="_blank" rel="noopener noreferrer" aria-label="Open the Pearl Necklace tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Pearl Necklace</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV13v56zQEF1/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-candle-dark.png?v=20260829blackbg1" aria-label="Candle model 360-degree turntable"><source src="./assets/showcase/model-candle-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV13v56zQEF1/" target="_blank" rel="noopener noreferrer" aria-label="Open the Candle tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Candle</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1dvsHzNEBS/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-little-ghost-dark.png?v=20260829blackbg1" aria-label="Little ghost model 360-degree turntable"><source src="./assets/showcase/model-little-ghost-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1dvsHzNEBS/" target="_blank" rel="noopener noreferrer" aria-label="Open the Little Ghost tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Little Ghost</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1SGFPenEKn/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-bow-dark.png?v=20260829blackbg1" aria-label="Bow model 360-degree turntable"><source src="./assets/showcase/model-bow-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1SGFPenEKn/" target="_blank" rel="noopener noreferrer" aria-label="Open the Bow tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Bow</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1U5RmBSEMu/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-tulip-dark.png?v=20260829blackbg1" aria-label="Tulip model 360-degree turntable"><source src="./assets/showcase/model-tulip-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1U5RmBSEMu/" target="_blank" rel="noopener noreferrer" aria-label="Open the Tulip tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Tulip</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1bU9NBYE4T/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-peach-dark.png?v=20260829blackbg1" aria-label="Peach model 360-degree turntable"><source src="./assets/showcase/model-peach-dark-1.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1bU9NBYE4T/" target="_blank" rel="noopener noreferrer" aria-label="Open the Peach tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Peach</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1JrPpztEBp/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-toon-render-dark.png?v=20260829blackbg1" aria-label="Toon-style drink model 360-degree turntable"><source src="./assets/showcase/model-toon-render-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1JrPpztEBp/" target="_blank" rel="noopener noreferrer" aria-label="Open the Toon-Style Render tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Motion</span><h3>Toon-Style Render</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1PuNtzUE1U/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-toon-style-room-dark.png?v=20260829blackbg1" aria-label="Toon-style room model 360-degree turntable"><source src="./assets/showcase/model-toon-style-room-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1PuNtzUE1U/" target="_blank" rel="noopener noreferrer" aria-label="Open the Toon-Style Room tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Scene</span><h3>Toon-Style Room</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV13iqhYgEge/"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/model-material-switch-dark.png?v=20260829blackbg1" aria-label="Material switch scene 360-degree turntable"><source src="./assets/showcase/model-material-switch-dark.mp4?v=20260829blackbg1" type="video/mp4"></video><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV13iqhYgEge/" target="_blank" rel="noopener noreferrer" aria-label="Open the Material Switch tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Object Modeling · Scene</span><h3>Low-Poly House</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV12t421T7Qx/"><img src="./assets/showcase/science-neuron-dark.png?v=20260829blackbg1" alt="Neuron visualization" loading="lazy"><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV12t421T7Qx/" target="_blank" rel="noopener noreferrer" aria-label="Open the Neuron tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Biomedical Visualization</span><h3>Neuron</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1gt421K7tG/"><img src="./assets/showcase/science-cell-dark.png?v=20260829blackbg1" alt="Cell visualization" loading="lazy"><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1gt421K7tG/" target="_blank" rel="noopener noreferrer" aria-label="Open the Cell tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Biomedical Visualization</span><h3>Cell</h3></div></article>
+          <article class="showcase-card" data-original-url="https://www.bilibili.com/video/BV1Un4y1o7B9/"><img src="./assets/showcase/science-cell-membrane-dark.png?v=20260829blackbg1" alt="Cell membrane visualization" loading="lazy"><a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1Un4y1o7B9/" target="_blank" rel="noopener noreferrer" aria-label="Open the Cell Membrane tutorial on Bilibili"><i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span></a><div class="showcase-card-overlay"><span>Biomedical Visualization</span><h3>Cell Membrane</h3></div></article>
+        </div>
+      </section>
+    </section>
+
+    <!-- =================== EDITING =================== -->
+    <section id="editing" class="showcase-chapter reveal">
+      <header class="showcase-chapter-heading">
+        <span class="showcase-index">02</span>
+        <h2>Editing</h2>
+        <p>Learned techniques reshape existing assets while preserving what should stay.</p>
+      </header>
+
+      <div class="showcase-feature-workflow">
+        <article class="workflow-card" id="workflow-chromatic-duck">
+          <header class="workflow-card-header">
+            <span>Editing workflow</span>
+            <div><h3>Chromatic Duck Gigi</h3><p>Original yellow asset and material tutorial to a generated chromatic result.</p></div>
+          </header>
+          <div class="workflow-flow">
+            <section class="workflow-stage workflow-stage--inputs" aria-label="Chromatic Duck Gigi inputs">
+              <span class="workflow-stage-label">Input</span>
+              <div class="workflow-input-grid">
+                <a class="workflow-media" href="./assets/workflows/chromatic-duck/source-yellow.png">
+                  <img src="./assets/workflows/chromatic-duck/source-yellow.png" alt="Original yellow Duck Gigi ISO preview" loading="lazy" decoding="async">
+                  <span>Original yellow asset</span>
+                </a>
+                <div class="workflow-media-shell">
+                  <a class="workflow-media" href="./assets/workflows/chromatic-duck/tutorial-cover.jpg"
+                     data-original-url="https://www.bilibili.com/video/BV1cbZFB2E9h/?spm_id_from=333.1387.upload.video_card.click">
+                    <img src="./assets/workflows/chromatic-duck/tutorial-cover.jpg" alt="Bilibili chromatic material tutorial cover" loading="lazy" decoding="async">
+                    <span>Tutorial cover</span>
+                  </a>
+                  <a class="workflow-original-link" href="https://www.bilibili.com/video/BV1cbZFB2E9h/?spm_id_from=333.1387.upload.video_card.click" target="_blank" rel="noopener noreferrer" aria-label="Open the original Chromatic Duck Gigi tutorial on Bilibili">
+                    <i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span>
+                  </a>
+                </div>
+              </div>
+            </section>
+            <div class="workflow-connector" aria-hidden="true"><span>Pipeline</span><b>→</b></div>
+            <section class="workflow-stage workflow-stage--outputs" aria-label="Chromatic Duck Gigi pipeline outputs">
+              <span class="workflow-stage-label">Executable outputs</span>
+              <a class="workflow-media workflow-media--nodes" href="./assets/workflows/chromatic-duck/material-nodes.png">
+                <img src="./assets/workflows/chromatic-duck/material-nodes.png" alt="Compact Blender material node graph for the chromatic Duck Gigi" loading="lazy" decoding="async">
+                <span>Blender material nodes</span>
+              </a>
+              <div class="workflow-code-card">
+                <div><span>Blender Python</span><a href="./assets/workflows/chromatic-duck/reproduce.py" download>reproduce.py ↓</a></div>
+                <pre><code>noise_large = nodes.new("ShaderNodeTexNoise")
+layer_weight = nodes.new("ShaderNodeLayerWeight")
+links.new(layer_weight.outputs["Facing"], tint_mix.inputs[0])
+links.new(tint_mix.outputs["Color"], principled.inputs["Base Color"])
+bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT_DIR / "asset.blend"))</code></pre>
+              </div>
+            </section>
+            <div class="workflow-connector workflow-connector--final" aria-hidden="true"><span>Render</span><b>→</b></div>
+            <a class="workflow-result" href="./assets/showcase/edit-chromatic-duck.mp4?v=20260828duckblack1">
+              <span>Final Blender work</span>
+              <video autoplay muted loop playsinline preload="metadata" aria-label="Final chromatic Duck Gigi animation"><source src="./assets/showcase/edit-chromatic-duck.mp4?v=20260828duckblack1" type="video/mp4"></video>
+              <strong>Chromatic Duck Gigi</strong>
+            </a>
+          </div>
+        </article>
+      </div>
+
+      <section class="showcase-asset-band" id="editing-duck-panel" aria-labelledby="editing-duck-title">
+        <header class="showcase-band-heading showcase-band-heading--editing">
+          <h3 id="editing-duck-title">Duck Gigi: Iridescent Skins</h3>
+        </header>
+        <div class="showcase-grid showcase-grid--editing">
+          <article class="showcase-card showcase-card--tutorial"
+                   data-original-url="https://www.bilibili.com/video/BV1cbZFB2E9h/?spm_id_from=333.1387.upload.video_card.click"
+                   aria-label="Open Chromatic Duck Gigi enlarged">
+            <video muted loop playsinline preload="metadata" aria-label="Final chromatic Duck Gigi animation"><source src="./assets/showcase/edit-chromatic-duck.mp4?v=20260828duckblack1" type="video/mp4"></video>
+            <a class="workflow-original-link showcase-card-original-link" href="https://www.bilibili.com/video/BV1cbZFB2E9h/?spm_id_from=333.1387.upload.video_card.click" target="_blank" rel="noopener noreferrer" aria-label="Open the Chromatic Duck Gigi tutorial on Bilibili">
+              <i class="fa fa-external-link" aria-hidden="true"></i><span>Tutorial</span>
+            </a>
+            <div class="showcase-card-overlay">
+              <span class="showcase-source">Tutorial ↗</span>
+              <h3>【blender】Make an Iridescent Material While Catching a Pokémon!</h3>
+            </div>
+          </article>
+          <article class="showcase-card"><video muted loop playsinline preload="metadata" aria-label="Chromatic duck edit one"><source src="./assets/showcase/edit-chromatic-01.mp4?v=20260828duckblack1" type="video/mp4"></video><div class="showcase-card-overlay"><span>Appearance Edit · 01</span><h3></h3></div></article>
+          <article class="showcase-card"><video muted loop playsinline preload="metadata" aria-label="Chromatic duck edit two"><source src="./assets/showcase/edit-chromatic-02.mp4?v=20260828duckblack1" type="video/mp4"></video><div class="showcase-card-overlay"><span>Appearance Edit · 02</span><h3></h3></div></article>
+          <article class="showcase-card"><video muted loop playsinline preload="metadata" aria-label="Chromatic duck edit three"><source src="./assets/showcase/edit-chromatic-03.mp4?v=20260828duckblack1" type="video/mp4"></video><div class="showcase-card-overlay"><span>Appearance Edit · 03</span><h3></h3></div></article>
+          <article class="showcase-card"><video muted loop playsinline preload="metadata" aria-label="Chromatic duck edit four"><source src="./assets/showcase/edit-chromatic-04.mp4?v=20260828duckblack1" type="video/mp4"></video><div class="showcase-card-overlay"><span>Appearance Edit · 04</span><h3></h3></div></article>
+          <article class="showcase-card"><video muted loop playsinline preload="metadata" aria-label="Chromatic duck edit five"><source src="./assets/showcase/edit-chromatic-05.mp4?v=20260828duckblack1" type="video/mp4"></video><div class="showcase-card-overlay"><span>Appearance Edit · 05</span><h3></h3></div></article>
+        </div>
+      </section>
+      <section class="showcase-asset-band" id="editing-sofa-panel" aria-labelledby="editing-sofa-title">
+        <header class="showcase-band-heading showcase-band-heading--editing">
+          <h3 id="editing-sofa-title">Sofa Material Swaps</h3>
+        </header>
+        <div class="showcase-grid showcase-grid--editing showcase-grid--sofa">
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-original.png" alt="Original bread-shaped sofa" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Original</span><h3>Bread Sofa</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-002.png?v=20260831sofa3" alt="Bread sofa material edit: forest green velvet" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit</span><h3>Forest Green Velvet</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-008.png?v=20260831sofa3" alt="Bread sofa material edit: thick-glazed enamel" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit</span><h3>Thick-Glazed Enamel</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-043.png?v=20260831sofa3" alt="Bread sofa material edit: glacier blue" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit</span><h3>Glacier Blue</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-045.png?v=20260831sofa3" alt="Bread sofa material edit: hammered bronze" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit</span><h3>Hammered Bronze</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-161.png?v=20260831sofa3" alt="Bread sofa material edit: polar night teal" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Stellar Eclipse</span><h3>Polar Night Teal</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-167.png?v=20260831sofa3" alt="Bread sofa material edit: deep-space blue" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Prismatic Holographic</span><h3>Deep-Space Blue</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-172.png?v=20260831sofa3" alt="Bread sofa material edit: ruby galaxy" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Prismatic Holographic</span><h3>Ruby Galaxy</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-173.png?v=20260831sofa3" alt="Bread sofa material edit: graphite iridescence" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Opal Caustics</span><h3>Graphite Iridescence</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-176.png?v=20260831sofa3" alt="Bread sofa material edit: molten spectrum" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Opal Caustics</span><h3>Molten Spectrum</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-180.png?v=20260831sofa3" alt="Bread sofa material edit: black pearl" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Aurora Chrome</span><h3>Black Pearl</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-186.png?v=20260831sofa3" alt="Bread sofa material edit: cobalt crackle" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Neon Kintsugi</span><h3>Cobalt Crackle</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-191.png?v=20260831sofa3" alt="Bread sofa material edit: burgundy velvet" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Directional Velvet</span><h3>Burgundy Velvet</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-197.png?v=20260831sofa3" alt="Bread sofa material edit: celadon crackle" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Glazed Ceramic</span><h3>Celadon Crackle</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-203.png?v=20260831sofa3" alt="Bread sofa material edit: museum white terrazzo" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Mineral Terrazzo</span><h3>Museum Terrazzo</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-209.png?v=20260831sofa3" alt="Bread sofa material edit: citrus bubble resin" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Bubble Resin</span><h3>Citrus Bubble Resin</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-213.png?v=20260831sofa3" alt="Bread sofa material edit: green apple bubble resin" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Bubble Resin</span><h3>Green Apple Resin</h3></div>
+          </article>
+          <article class="showcase-card">
+            <img src="./assets/showcase/sofa/edit-sofa-219.png?v=20260831sofa3" alt="Bread sofa material edit: ink and copper brocade" loading="lazy" decoding="async">
+            <div class="showcase-card-overlay"><span>Material Edit · Woven Brocade</span><h3>Ink & Copper Brocade</h3></div>
+          </article>
+        </div>
+      </section>
+      <section class="showcase-asset-band showcase-asset-band--glass" aria-labelledby="glass-heart-title">
+        <header class="showcase-band-heading">
+          <h3 id="glass-heart-title">Glass Heart Material Transfer</h3>
+          <p>One material language, transferred across forms.</p>
+        </header>
+        <div class="showcase-strip showcase-strip--glass" aria-label="Glass Heart material transfers">
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-original-dark.png?v=20260830glassbg3" aria-label="Original Glass Heart material turntable"><source src="./assets/showcase/glass-heart-original-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Original Material · Motion</span><h3>Original Glass Heart</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-frog-traveler-dark.png?v=20260830glassbg3" aria-label="Glass Heart frog traveler 360-degree turntable"><source src="./assets/showcase/glass-heart-frog-traveler-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Frog Traveler</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-horned-feathered-creature-dark.png?v=20260830glassbg3" aria-label="Glass Heart horned feathered creature 360-degree turntable"><source src="./assets/showcase/glass-heart-horned-feathered-creature-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Horned Feathered Creature</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-oni-samurai-dark.png?v=20260830glassbg3" aria-label="Glass Heart oni samurai 360-degree turntable"><source src="./assets/showcase/glass-heart-oni-samurai-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Oni Samurai</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-female-bust-dark.png?v=20260830glassbg3" aria-label="Glass Heart female bust 360-degree turntable"><source src="./assets/showcase/glass-heart-female-bust-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Female Bust</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-2b-sculpture-dark.png?v=20260830glassbg3" aria-label="Glass Heart 2B sculpture 360-degree turntable"><source src="./assets/showcase/glass-heart-2b-sculpture-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>2B Sculpture</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-african-wild-dog-dark.png?v=20260830glassbg3" aria-label="Glass Heart African wild dog 360-degree turntable"><source src="./assets/showcase/glass-heart-african-wild-dog-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>African Wild Dog</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-bentwood-cane-chair-dark.png?v=20260830glassbg3" aria-label="Glass Heart bentwood cane chair 360-degree turntable"><source src="./assets/showcase/glass-heart-bentwood-cane-chair-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Bentwood Cane Chair</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-vintage-racing-car-dark.png?v=20260830glassbg3" aria-label="Glass Heart vintage racing car 360-degree turntable"><source src="./assets/showcase/glass-heart-vintage-racing-car-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Vintage Racing Car</h3></div></article>
+          <article class="showcase-card"><video autoplay muted loop playsinline preload="metadata" poster="./assets/showcase/glass-heart-classical-sailing-ship-dark.png?v=20260830glassbg3" aria-label="Glass Heart classical sailing ship 360-degree turntable"><source src="./assets/showcase/glass-heart-classical-sailing-ship-dark.mp4?v=20260830glassbg3" type="video/mp4"></video><div class="showcase-card-overlay"><span>Glass Material · Motion</span><h3>Classical Sailing Ship</h3></div></article>
+        </div>
+      </section>
+    </section>
+  <!-- =================== CITATION =================== -->
+  <section class="showcase-citation reveal" id="bibtex" aria-labelledby="citation-title">
+    <header class="showcase-compact-heading showcase-citation-heading">
+      <p class="showcase-kicker" id="citation-title">Citation</p>
+    </header>
+
+    <div class="cite-wrap">
+      <button type="button" class="cite-copy" data-copy-target="#cite-bibtex" aria-label="Copy citation to clipboard">
+        <i class="fa fa-clipboard" aria-hidden="true"></i><span>Copy</span>
+      </button>
+      <pre class="cite-block"><code id="cite-bibtex">@misc{blenderlore2026,
+  title       = {BlenderLore: Learning 3D Coding from Internet Tutorial Videos},
+  author      = {BlenderLore Team},
+  year        = {2026},
+  publisher   = {GitHub},
+  journal     = {GitHub repository},
+  howpublished = {\url{https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io}},
+}</code></pre>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- =================== FOOTER =================== -->
+  <footer class="surflo-footer">
+    <div class="surflo-footer-bar" aria-hidden="true">
+      <span>BLENDERLORE</span>
+      <span class="surflo-footer-bar-line"></span>
+    </div>
+    <p class="quiet">
+      <span class="footer-copyright-year">&copy; 2026</span>
+      <span class="footer-copyright-divider" aria-hidden="true"></span>
+      <span class="footer-copyright-name">The BlenderLore authors</span>
+    </p>
+  </footer>
+
+  <!-- =================== SCRIPTS =================== -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./assets/vendor/three/build/three.module.js?v=20260820r180",
+      "three/addons/loaders/PLYLoader.js": "./assets/vendor/three/loaders/PLYLoader.js?v=20260820r180",
+      "three/addons/controls/OrbitControls.js": "./assets/vendor/three/controls/OrbitControls.js?v=20260820r180"
+    }
+  }
+  </script>
+
+  <!-- Interactive hero renderers + project viewers -->
+  <script type="module">
+    import('./assets/hero-glb.js?v=20260903-stained-glass-scale70').catch((err) => {
+      console.error('[surflo] hero-glb.js failed to load:', err);
+    });
+    import('./assets/hero-turntable.js?v=20260830-cycles1').catch((err) => {
+      console.error('[surflo] hero-turntable.js failed to load:', err);
+    });
+    import('./surflo.js?v=20260903-stained-glass-scale70').catch((err) => {
+      console.error('[surflo] surflo.js failed to load:', err);
+    });
+  </script>
+
+  <!-- Site-wide micro-interactions (reveal-on-scroll, magnetic buttons, lightbox) -->
+  <script src="./assets/site.js?v=20260907-language-toggle12"></script>
+  <script src="./assets/showcase.js?v=20260831-workflow-lightbox4"></script>
+
+</body>
+</html>

@@ -27,7 +27,7 @@ Generalization is central to BlenderLore. Successful reconstructions are retaine
 
 ## Method
 
-![BlenderLore pipeline overview](https://3d-coding-blender.github.io/assets/method-pipeline.png)
+![BlenderLore pipeline overview](https://BlenderLore.github.io/assets/method-pipeline.png)
 
 1. **Collect tutorials** — select a high-quality Blender tutorial and define the target asset or supported motion.
 2. **Recover evidence** — align visual keyframes, OCR, narration, timestamps, interface actions, and Blender-version cues.

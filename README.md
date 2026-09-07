@@ -14,68 +14,113 @@ English | <a href="README_zh-CN.md">简体中文</a>
   <img src="https://img.shields.io/badge/Paper-Coming_Soon-8f7ad8" alt="Paper Coming Soon">
 </p>
 
-#### Generation · Material
-
-Generate procedural, physically-based Blender materials directly from tutorial videos.
+## 🎬 Showcases
 
 <table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Black%20Wukong.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Gold%20Foil%20Card.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Laser%20Card%20.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Material/Procedural%20Fur%20Ball.mp4" controls style="width:100%"></video></td>
+    <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Generation · Material</th>
   </tr>
-</table>
-
-#### Generation · Objects
-
-Reconstruct complete 3D object models and their modeling workflow from tutorial videos.
-
-<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bear%20Ice%20Zongzi.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bee%20Keycap.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Bow.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/generation/Objects/Tulip.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Material/Black%20Wukong.mp4" controls style="width:100%"></video>
+      <br><strong>Black Wukong</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Material/Gold%20Foil%20Card.mp4" controls style="width:100%"></video>
+      <br><strong>Gold Foil Card</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Material/Laser%20Card%20.mp4" controls style="width:100%"></video>
+      <br><strong>Laser Card</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Material/Procedural%20Fur%20Ball.mp4" controls style="width:100%"></video>
+      <br><strong>Procedural Fur Ball</strong>
+    </td>
   </tr>
-</table>
-
-#### Editing · Duck Gigi
-
-Apply natural-language edit instructions to a reconstructed asset and produce multiple edited variants.
-
-<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Duck%20Gigi.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change%201.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change%202.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Duck%20Gigi/Change3.mp4" controls style="width:100%"></video></td>
+    <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Generation · Objects</th>
   </tr>
-</table>
-
-#### Editing · Glass Heart Material Transfer
-
-Transfer a reconstructed material from one asset onto several unrelated target assets.
-
-<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Glass%20Heart.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Female%20Bust.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Frog%20Traveler.mp4" controls style="width:100%"></video></td>
-    <td align="center" style="padding: 10px;"><video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Vintage%20Racing%20Car.mp4" controls style="width:100%"></video></td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Objects/Bear%20Ice%20Zongzi.mp4" controls style="width:100%"></video>
+      <br><strong>Bear Ice Zongzi</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Objects/Bee%20Keycap.mp4" controls style="width:100%"></video>
+      <br><strong>Bee Keycap</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Objects/Bow.mp4" controls style="width:100%"></video>
+      <br><strong>Bow</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/generation/Objects/Tulip.mp4" controls style="width:100%"></video>
+      <br><strong>Tulip</strong>
+    </td>
   </tr>
-</table>
-
-#### Editing · Sofa
-
-Apply natural-language edit instructions to a reconstructed sofa asset and produce multiple edited variants.
-
-<table style="width:100%; border-collapse: collapse; margin: 20px 0;">
   <tr>
-    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Sofa.png" style="width:100%"></td>
-    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%201.png" style="width:100%"></td>
-    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%202.png" style="width:100%"></td>
-    <td align="center" style="padding: 10px;"><img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:100%"></td>
+    <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Editing · Duck Gigi</th>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Duck%20Gigi/Duck%20Gigi.mp4" controls style="width:100%"></video>
+      <br><strong>Duck Gigi</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Duck%20Gigi/Change%201.mp4" controls style="width:100%"></video>
+      <br><strong>Change 1</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Duck%20Gigi/Change%202.mp4" controls style="width:100%"></video>
+      <br><strong>Change 2</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Duck%20Gigi/Change3.mp4" controls style="width:100%"></video>
+      <br><strong>Change 3</strong>
+    </td>
+  </tr>
+  <tr>
+    <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Editing · Glass Heart Material Transfer</th>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Glass%20Heart.mp4" controls style="width:100%"></video>
+      <br><strong>Glass Heart</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Female%20Bust.mp4" controls style="width:100%"></video>
+      <br><strong>Female Bust</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Frog%20Traveler.mp4" controls style="width:100%"></video>
+      <br><strong>Frog Traveler</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <video src="docs/show_cases/edit/Glass%20Heart%20Material%20Transfer/Vintage%20Racing%20Car.mp4" controls style="width:100%"></video>
+      <br><strong>Vintage Racing Car</strong>
+    </td>
+  </tr>
+  <tr>
+    <th colspan="4" align="left" style="padding: 10px; background-color: #f6f8fa;">Editing · Sofa</th>
+  </tr>
+  <tr>
+    <td align="center" style="padding: 10px;">
+      <img src="docs/show_cases/edit/Sofa/Sofa.png" style="width:100%">
+      <br><strong>Sofa</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="docs/show_cases/edit/Sofa/Change%201.png" style="width:100%">
+      <br><strong>Change 1</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="docs/show_cases/edit/Sofa/Change%202.png" style="width:100%">
+      <br><strong>Change 2</strong>
+    </td>
+    <td align="center" style="padding: 10px;">
+      <img src="docs/show_cases/edit/Sofa/Change%203.png" style="width:100%">
+      <br><strong>Change 3</strong>
+    </td>
   </tr>
 </table>
 

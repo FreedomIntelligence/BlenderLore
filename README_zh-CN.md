@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://blenderlore.github.io/"><img src="https://img.shields.io/badge/Project-Website-7b61ff" alt="Project Website"></a>
   <a href="https://github.com/FreedomIntelligence/BlenderLore"><img src="https://img.shields.io/badge/GitHub-Repository-111111.svg?logo=github" alt="GitHub Repository"></a>
-  <a href="https://huggingface.co/"><img src="https://img.shields.io/badge/HuggingFace-Dataset-f6c344.svg?logo=huggingface" alt="Hugging Face Dataset"></a>
+  <a href="https://huggingface.co/datasets/FreedomIntelligence/BlenderLore"><img src="https://img.shields.io/badge/HuggingFace-Dataset-f6c344.svg?logo=huggingface" alt="Hugging Face Dataset"></a>
   <img src="https://img.shields.io/badge/Paper-Coming_Soon-8f7ad8" alt="Paper Coming Soon">
 </p>
 

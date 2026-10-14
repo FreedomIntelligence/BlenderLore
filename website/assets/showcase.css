@@ -1418,3 +1418,32 @@ video.showcase-lightbox-media-element {
   .showcase-grid--editing { grid-template-columns: 1fr; }
   .showcase-edit-collection { padding: 14px; border-radius: 14px; }
 }
+
+/* Paper figures retain their full aspect ratio at every viewport size. */
+.paper-section h2 {
+  margin: 12px 0 22px;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+.paper-section .paper-figure {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.paper-figure-link { display: block; cursor: zoom-in; }
+.paper-figure-link:focus-visible { outline: 2px solid #b69cff; outline-offset: 5px; }
+.paper-section .paper-figure figcaption {
+  padding: 16px 0 0;
+  border: 0;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.65;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.showcase-method-grid--five .showcase-method-step h3 { font-size: 20px; letter-spacing: 0; }
+@media (max-width: 620px) {
+  .paper-section h2 { font-size: 24px; }
+}

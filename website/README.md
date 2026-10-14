@@ -1,41 +1,50 @@
-# BlenderLore
+English | <a href="README_zh-CN.md">简体中文</a>
+
+<h2 align="center">BlenderLore: Learning 3D Coding from Internet Tutorial Videos</h2>
 
 <p align="center">
-  <strong>Learning 3D Coding from Internet Tutorial Videos</strong>
+  <strong>If you like our project, please give us a star ⭐ on GitHub for the latest update.
+</strong>
 </p>
 
 <p align="center">
-  English | <a href="README_zh-CN.md">简体中文</a>
-</p>
-
-<p align="center">
-  <a href="https://3d-coding-blender.github.io/"><img src="https://img.shields.io/badge/Project-Website-7b61ff" alt="Project Website"></a>
-  <a href="https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io"><img src="https://img.shields.io/badge/GitHub-Repository-111111.svg?logo=github" alt="GitHub Repository"></a>
-  <a href="https://huggingface.co/"><img src="https://img.shields.io/badge/HuggingFace-Dataset-f6c344.svg?logo=huggingface" alt="Hugging Face Dataset"></a>
+  <a href="https://blenderlore.github.io/"><img src="https://img.shields.io/badge/Project-Website-7b61ff" alt="Project Website"></a>
+  <a href="https://github.com/FreedomIntelligence/BlenderLore"><img src="https://img.shields.io/badge/GitHub-Repository-111111.svg?logo=github" alt="GitHub Repository"></a>
+  <a href="https://huggingface.co/datasets/FreedomIntelligence/BlenderLore"><img src="https://img.shields.io/badge/HuggingFace-Dataset-f6c344.svg?logo=huggingface" alt="Hugging Face Dataset"></a>
   <img src="https://img.shields.io/badge/Paper-Coming_Soon-8f7ad8" alt="Paper Coming Soon">
 </p>
 
-> **Status:** Research prototype. The paper and dataset will be released soon.
+## 🔭 Overview
 
-## Overview
+BlenderLore is a dataset and pipeline for acquiring and reusing procedural knowledge from internet tutorial videos for 3D coding. It converts video evidence into illustrated tutorials, reconstructs editable assets in Blender Python, and extracts reviewed methods for future creation tasks. The collection contains **about 22K project instances associated with over 3K tutorial videos** from YouTube and Bilibili.
 
-Internet Blender tutorials contain rich, real-world creation knowledge, but that knowledge is difficult for an agent to use directly. Important instructions may appear in narration, on-screen captions, changing interface states, or brief node-graph operations.
+**Generalization is central to BlenderLore.** Executing code and inspecting geometry, appearance, and motion ground the inferred methods in concrete implementations. Agents can then retrieve, adapt, and combine methods from different tutorials for new goals. **BlenderLore Skill** packages the reconstruction workflow and procedural knowledge library for existing coding agents; knowledge accumulates externally without updating model parameters.
 
-BlenderLore converts tutorial videos into timestamped multimodal evidence, reconstructs the demonstrated workflow, and generates executable Blender Python. Each run delivers an editable Blender project, a reproduction script, renders, and validation results.
+![A complete BlenderLore example: dynamic fur, from tutorial evidence to illustrated steps, Blender Python, and an animated asset](assets/paper/blenderlore_sample.png)
 
-Generalization is central to BlenderLore. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge, and recombines it into task-specific Blender code.
+*A complete example: dynamic fur. Illustrated steps connect the source video to executable reconstruction and reusable procedural knowledge.*
 
-## Method
+## 🧩 Method
 
-![BlenderLore pipeline overview](https://3d-coding-blender.github.io/assets/method-pipeline.png)
+![BlenderLore pipeline: tutorial videos, multimodal evidence, illustrated workflows and knowledge retrieval, a coding agent loop, and verified deliverables](assets/paper/blenderlore_method.png)
 
-1. **Collect tutorials** — select a high-quality Blender tutorial and define the target asset or supported motion.
-2. **Recover evidence** — align visual keyframes, OCR, narration, timestamps, interface actions, and Blender-version cues.
-3. **Specify the workflow** — convert the evidence into ordered operations and retrieve relevant procedural knowledge.
-4. **Code, run, and repair** — generate Blender Python, execute it, render the scene, compare the result, and repair failures.
-5. **Verify and retain** — package editable assets and visual evidence, then retain validated patterns for future tasks.
+1. **Recover illustrated workflows.** Align video frames, narration, on-screen text, and interface changes into ordered steps, recording inputs, operations, parameters, and intermediate results.
+2. **Ground methods in source assets.** Use creator-provided projects when available, repair missing components, and connect tutorial steps to concrete implementations.
+3. **Reconstruct and inspect.** Retrieve relevant knowledge, generate Blender Python, execute and render the scene, and repair discrepancies in geometry, appearance, or motion.
+4. **Review and retain knowledge.** Record each method's source, retrieval keywords, applicability, implementation excerpt, and checks for the intended result. Human experts review the resulting assets.
+5. **Adapt and combine.** Reuse methods across tutorials to create new assets and expand the procedural knowledge library.
 
-## What You Get
+## Generalizing Beyond Tutorials
+
+![Cross-tutorial composition: Duck GiGi modeling, transferred rigging and walking, and an iridescent material](assets/paper/blenderlore_composition.png)
+
+BlenderLore creates a walking iridescent Duck GiGi by combining three tutorials: a static character modeling workflow, a rigging and walking method transferred from a baby crocodile, and an iridescent material. The reusable unit is a construction method, allowing agents to adapt and combine knowledge beyond the demonstrated assets.
+
+## 🎁 What You Get
+
+<table>
+<tr>
+<td width="33%" valign="top">
 
 ### 01 · An End-to-End Agent Pipeline
 
@@ -49,15 +58,25 @@ Each run recreates a tutorial workflow and delivers an editable Blender project,
 - Animation
 - Agent Log
 
+</td>
+<td width="33%" valign="top">
+
 ### 02 · A High-Quality 3D Dataset
 
-Through collection, repair, and reconstruction, we built a high-quality dataset of 23K procedural 3D assets.
+About 22K project instances associated with over 3K tutorial videos, built through collection, repair, reconstruction, and cross-tutorial adaptation and composition. Human experts manually check every final asset file.
+
+</td>
+<td width="33%" valign="top">
 
 ### 03 · A Reusable Procedural Knowledge Library
 
-Successful workflows are retained as reusable procedural knowledge. For unfamiliar targets, the agent decomposes the task, retrieves relevant patterns, and recombines them into task-specific Blender code.
+Reviewed entries record their source, applicability, implementation, and checks. BlenderLore Skill supplies this library and workflow guidance so coding agents can retrieve, adapt, and combine methods for new 3D tasks.
 
-## Quick Start
+</td>
+</tr>
+</table>
+
+## 🚀 Quick Start
 
 ### 1. Install prerequisites
 
@@ -151,23 +170,27 @@ Output: /path/to/data/run_skill
 
 You can replace the input with a full video URL or a Markdown tutorial path. Include paths to any supporting project or reference images in the same message.
 
-## Citation
+## 📖 Citation
 
 ```bibtex
 @misc{blenderlore2026,
   title        = {BlenderLore: Learning 3D Coding from Internet Tutorial Videos},
-  author       = {BlenderLore Team},
+  author       = {FreedomAI Team},
   year         = {2026},
   publisher    = {GitHub},
   journal      = {GitHub repository},
-  howpublished = {\url{https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io}},
+  howpublished = {\url{https://github.com/FreedomIntelligence/BlenderLore}},
 }
 ```
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
-This project builds on the Blender ecosystem, Three.js, and the open-source tools that make browser-based 3D visualization and reproducible graphics possible. Individual asset and tutorial credits will be added alongside the final dataset and paper release.
+This project is built upon [Blender](https://www.blender.org/), the free and open-source 3D creation suite.
 
-## License
+## 📄 License
 
-The repository license is **to be confirmed**. Please check the repository before reusing code, media, models, or tutorial-derived assets.
+This project is released under the Apache 2.0 license.
+
+## 📬 Contact
+
+For questions and feedback, please contact us at: <a href="mailto:minghaowu@link.cuhk.edu.cn">minghaowu@link.cuhk.edu.cn</a>

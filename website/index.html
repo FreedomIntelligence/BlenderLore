@@ -9,7 +9,7 @@
   <!-- OpenGraph -->
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="BlenderLore: Learning 3D Coding from Internet Tutorial Videos"/>
-  <meta property="og:description" content="An agent framework that learns reusable Blender workflows from internet tutorial videos."/>
+  <meta property="og:description" content="Learn reusable 3D methods from tutorial videos with BlenderLore: illustrated workflows, executable reconstructions, and procedural knowledge."/>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
   <link href="./base.css?v=20260828-no-theme-toggle" rel="stylesheet">
   <link href="./assets/site.css?v=20260831-back-to-top1" rel="stylesheet">
   <link href="./surflo.css?v=20260906-language-aligned1" rel="stylesheet">
-  <link href="./assets/showcase.css?v=20260831-objects-tutorial-links1" rel="stylesheet">
+  <link href="./assets/showcase.css?v=20261014-paper" rel="stylesheet">
 
 <!--  Google Analytics (DO NOT copy/paste following section, setup your own analytics tag at https://analytics.google.com/analytics/web/)  -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-CDL4R10HKE"></script>
@@ -57,19 +57,19 @@
     <div class="hero-asset-copy-wrap" aria-live="polite">
       <article class="hero-asset-copy" data-hero-copy="holographic-card" aria-hidden="false">
         <h2>Holographic Foil Card</h2>
-        <p>The agent separates the character, background, text, and outline into transparent layers, then offsets them at different depths with view-dependent coordinates to create parallax. Alpha masks preserve each silhouette, while procedural Voronoi and wave patterns add iridescent highlights, sparkles, and a gold outline. Animated reflections complete a holographic foil card that shifts as it moves.</p>
+        <p>Transparent layers create depth and parallax. Procedural patterns, iridescent highlights, and animated reflections turn the source artwork into an editable holographic foil card.</p>
       </article>
       <article class="hero-asset-copy" data-hero-copy="chromatic-duck" aria-hidden="true" hidden>
         <h2>Iridescent Duck Gigi</h2>
-        <p>Duck Gigi starts from a generated PBR character whose yellow surface is replaced with a procedural iridescent material. Star textures, mapped noise, color ramps, and wave-based bands create the shifting finish; masks preserve the face, feet, and beak. Controlled emission, bloom, and keyframed shader parameters produce the animated color transitions.</p>
+        <p>A procedural iridescent material transforms Duck Gigi with shifting colors, sparkles, and animated shader parameters while preserving the face, feet, and beak.</p>
       </article>
       <article class="hero-asset-copy" data-hero-copy="stained-glass-window" aria-hidden="true" hidden>
         <h2>Stained-Glass Asuka</h2>
-        <p>The agent first recovers the geometric setup—a thin, solidified plane that gives the material physical thickness—then rebuilds the shader graph around the source artwork. A mapped image texture provides the local colors, while a 2D Voronoi texture in Distance to Edge mode partitions the picture into irregular glass panes. ColorRamp nodes sharpen these boundaries into a reusable mask, which separates the translucent colored glass from its dark metallic leading and also drives raised and inset bump details along the seams. Additional noise-based distortion breaks up overly regular borders, introduces subtle surface waviness, and enriches the color variation inside each pane. The resulting asset adapts this procedural workflow to the Asuka artwork, preserving the original composition while giving it the depth, transmission, reflections, and handcrafted mosaic character of a luminous stained-glass window.</p>
+        <p>Image colors and Voronoi boundaries form translucent glass panes with metallic leading. Bump details and controlled distortion adapt the learned material workflow to the Asuka artwork.</p>
       </article>
       <article class="hero-asset-copy" data-hero-copy="maoqiu" aria-hidden="true" hidden>
         <h2>Procedural Fur Ball</h2>
-        <p>The agent starts from a compact spherical core and reconstructs a procedural hair system across its surface. Strand density, length, clumping, roughness, and direction are varied to create a soft, naturally uneven silhouette instead of a uniform shell. Warm color variation and strand-aware shading preserve depth between the fibers, while the hidden core prevents gaps as the asset rotates. The result is an editable golden fur material whose density, length, shape, and palette can be adjusted through the same procedural setup.</p>
+        <p>A reconstructed hair system controls strand length, clumping, shading, and motion. The editable asset connects the visible fur effect to a reusable procedural method.</p>
       </article>
     </div>
 
@@ -81,11 +81,11 @@
           Learning 3D Coding from Internet Tutorial Videos.
         </span>
         <nav class="hero-resource-links" aria-label="Project resources">
-          <a class="hero-resource-link" href="https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io" target="_blank" rel="noopener noreferrer">
+          <a class="hero-resource-link" href="https://github.com/FreedomIntelligence/BlenderLore" target="_blank" rel="noopener noreferrer">
             <i class="fa fa-github" aria-hidden="true"></i>
             <span>Github</span>
           </a>
-          <a class="hero-resource-link" href="https://huggingface.co/" target="_blank" rel="noopener noreferrer">
+          <a class="hero-resource-link" href="https://huggingface.co/datasets/FreedomIntelligence/BlenderLore" target="_blank" rel="noopener noreferrer">
             <svg class="hero-resource-icon hero-huggingface-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 2.25a9.75 9.75 0 1 0 9.75 9.75A9.76 9.76 0 0 0 12 2.25Z" fill="none" stroke="currentColor" stroke-width="1.7"/>
               <circle cx="8.5" cy="10.4" r="1.05" fill="currentColor"/>
@@ -122,20 +122,16 @@
         <h2>Learning 3D Coding from Internet Tutorial Videos.</h2>
         <div class="showcase-abstract">
           <span class="showcase-label">Abstract</span>
-          <p>
-            Internet Blender tutorials contain rich, real-world creation knowledge, but that knowledge is difficult for an agent to use directly. Important instructions may appear in narration, on-screen captions, changing interface states, or brief node-graph operations, while the final result alone does not reveal how the asset was constructed. We present <span class="accent">BlenderLore</span>, an agent pipeline that converts tutorial videos into timestamped multimodal evidence, reconstructs the demonstrated workflow, and generates executable Blender Python from a canonical scene.
-          </p>
-          <p>
-            The agent combines visual keyframes, OCR, available transcript evidence, Blender-version cues, and retrieved workflow knowledge to build a bounded reconstruction specification. Generated programs are executed inside Blender and evaluated through fresh renders, multi-view observations, and turntable or animation evidence when motion is supported by the tutorial. The primary output is an editable <code>.blend</code> asset rather than a flattened image.
-          </p>
-          <p>
-            <span class="accent">Generalization</span> is central to BlenderLore. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge and recombines it into task-specific Blender code.
-          </p>
+          <p>BlenderLore acquires reusable procedural knowledge from internet tutorial videos for 3D coding. It turns video evidence into illustrated tutorials, reconstructs editable assets in Blender Python, and extracts reviewed methods for future creation tasks.</p>
+          <p>The collection contains about 22K project instances associated with over 3K tutorial videos from YouTube and Bilibili. Human experts check the final assets built through collection, repair, reconstruction, and cross-tutorial composition.</p>
+          <p>BlenderLore Skill brings the reconstruction workflow and procedural knowledge library to existing coding agents. Agents retrieve, adapt, and combine methods for new goals, accumulating external knowledge without updating model parameters.</p>
         </div>
       </div>
 
       <nav class="showcase-jump-nav" aria-label="Page sections">
+        <a href="#sample">Inside One Sample</a>
         <a href="#method">Method</a>
+        <a href="#generalization">Generalization</a>
         <a href="#what-you-get">What You Get</a>
         <a href="#generation">Generation</a>
         <a href="#editing">Editing</a>
@@ -143,14 +139,30 @@
       </nav>
     </section>
 
+    <section id="sample" class="showcase-pipeline paper-section reveal">
+      <header class="showcase-compact-heading">
+        <p class="showcase-kicker">Inside One Sample</p>
+        <h2>From video evidence to dynamic fur</h2>
+      </header>
+      <figure class="showcase-pipeline-figure paper-figure">
+        <a class="paper-figure-link" href="./assets/paper/blenderlore_sample.png" aria-label="Open figure enlarged">
+          <img src="./assets/paper/blenderlore_sample.png" alt="Dynamic fur: tutorial video, illustrated steps, procedural knowledge, code, and reconstructed animation" loading="lazy" decoding="async">
+        </a>
+        <figcaption>Illustrated steps connect the source video to Blender Python, an animated asset, and reusable procedural knowledge.</figcaption>
+      </figure>
+    </section>
+
     <!-- =================== METHOD =================== -->
-    <section id="method" class="showcase-pipeline reveal">
+    <section id="method" class="showcase-pipeline paper-section reveal">
       <header class="showcase-compact-heading">
         <p class="showcase-kicker">Method</p>
+        <h2>Learn, reconstruct, and retain</h2>
       </header>
-      <figure class="showcase-pipeline-figure">
-        <img src="./assets/method-pipeline.png?v=20260830-v2" alt="Five-stage BlenderLore pipeline from internet tutorials through multimodal evidence, workflow specification, coding-agent execution, and verified deliverables" loading="lazy" decoding="async">
-        <figcaption>BlenderLore pipeline overview</figcaption>
+      <figure class="showcase-pipeline-figure paper-figure">
+        <a class="paper-figure-link" href="./assets/paper/blenderlore_method.png" aria-label="Open figure enlarged">
+          <img src="./assets/paper/blenderlore_method.png" alt="BlenderLore workflow from internet tutorials to verified assets and reviewed procedural knowledge" loading="lazy" decoding="async">
+        </a>
+        <figcaption>Video evidence becomes an illustrated workflow. A coding agent retrieves knowledge, executes and repairs Blender code, and retains reviewed methods.</figcaption>
       </figure>
     </section>
 
@@ -163,30 +175,43 @@
       <div class="showcase-method-grid showcase-method-grid--five">
         <article class="showcase-method-step showcase-method-step--primary">
           <span class="showcase-index">01</span>
-          <h3>Collect Tutorials</h3>
-          <p>Start from high-quality internet Blender tutorials and identify the target asset, workflow, and supported motion.</p>
+          <h3>Illustrated Workflows</h3>
+          <p>Align frames, narration, and interface changes into steps with inputs, operations, parameters, and intermediate results.</p>
         </article>
         <article class="showcase-method-step">
           <span class="showcase-index">02</span>
-          <h3>Recover Evidence</h3>
-          <p>Align keyframes, OCR, narration or audio, interface actions, timestamps, and Blender-version cues.</p>
+          <h3>Ground in Source Assets</h3>
+          <p>Use creator-provided projects when available, repair missing components, and connect demonstrated steps to implementations.</p>
         </article>
         <article class="showcase-method-step">
           <span class="showcase-index">03</span>
-          <h3>Specify the Workflow</h3>
-          <p>Convert evidence into ordered operations and retrieve relevant procedural knowledge.</p>
+          <h3>Reconstruct and Inspect</h3>
+          <p>Retrieve methods, generate Blender Python, and inspect geometry, appearance, and motion through execution and rendering.</p>
         </article>
         <article class="showcase-method-step">
           <span class="showcase-index">04</span>
-          <h3>Code, Run, Repair</h3>
-          <p>Generate Blender Python, execute it in Blender, render the scene, compare the result, and repair failures in a closed loop.</p>
+          <h3>Review and Retain</h3>
+          <p>Record each method's source, applicability, implementation, and checks. Human experts review the final assets.</p>
         </article>
         <article class="showcase-method-step">
           <span class="showcase-index">05</span>
-          <h3>Verify and Retain</h3>
-          <p>Package editable assets and visual evidence, then retain validated workflow patterns as candidate procedural knowledge for reuse.</p>
+          <h3>Adapt and Combine</h3>
+          <p>Transfer and combine methods across tutorials to create new assets and expand the procedural knowledge library.</p>
         </article>
       </div>
+    </section>
+
+    <section id="generalization" class="showcase-pipeline paper-section reveal">
+      <header class="showcase-compact-heading">
+        <p class="showcase-kicker">Generalizing Beyond Tutorials</p>
+        <h2>One new asset, three learned methods</h2>
+      </header>
+      <figure class="showcase-pipeline-figure paper-figure">
+        <a class="paper-figure-link" href="./assets/paper/blenderlore_composition.png" aria-label="Open figure enlarged">
+          <img src="./assets/paper/blenderlore_composition.png" alt="Cross-tutorial composition of Duck GiGi modeling, walking animation, and an iridescent material" loading="lazy" decoding="async">
+        </a>
+        <figcaption>Duck GiGi combines static character modeling, rigging and walking transferred from a baby crocodile tutorial, and an iridescent material from a third tutorial.</figcaption>
+      </figure>
     </section>
 
     <!-- =================== WHAT YOU GET =================== -->
@@ -212,12 +237,12 @@
         <article class="showcase-outcome-card">
           <span class="showcase-index">02</span>
           <h3>A High-Quality 3D Dataset</h3>
-          <p>Through collection, repair, and reconstruction, we built a high-quality dataset of 23K procedural 3D assets.</p>
+          <p>About 22K project instances associated with over 3K tutorial videos, built through collection, repair, reconstruction, and cross-tutorial composition. Human experts check every final asset.</p>
         </article>
         <article class="showcase-outcome-card">
           <span class="showcase-index">03</span>
           <h3>A Reusable Procedural Knowledge Library</h3>
-          <p>The procedural knowledge library serves as a key mechanism for generalization: when facing an unfamiliar target, the agent decomposes it into reusable construction patterns, retrieves relevant procedural knowledge, and recombines it into task-specific Blender code.</p>
+          <p>BlenderLore Skill supplies workflow guidance and reviewed methods with sources, applicability, implementation excerpts, and checks. Coding agents retrieve and adapt this knowledge for new 3D tasks.</p>
         </article>
       </div>
     </section>
@@ -540,7 +565,7 @@ bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT_DIR / "asset.blend"))</code></pr
   year        = {2026},
   publisher   = {GitHub},
   journal     = {GitHub repository},
-  howpublished = {\url{https://github.com/3D-Coding-Blender/3D-Coding-Blender.github.io}},
+  howpublished = {\url{https://github.com/FreedomIntelligence/BlenderLore}},
 }</code></pre>
     </div>
   </section>
@@ -585,8 +610,8 @@ bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT_DIR / "asset.blend"))</code></pr
   </script>
 
   <!-- Site-wide micro-interactions (reveal-on-scroll, magnetic buttons, lightbox) -->
-  <script src="./assets/site.js?v=20260907-language-toggle12"></script>
-  <script src="./assets/showcase.js?v=20260831-workflow-lightbox4"></script>
+  <script src="./assets/site.js?v=20261014-paper"></script>
+  <script src="./assets/showcase.js?v=20261014-paper"></script>
 
 </body>
 </html>

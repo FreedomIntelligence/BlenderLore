@@ -211,11 +211,10 @@
   });
 
   // Workflow media should enlarge in the same lightbox instead of opening
-  // the linked image in a new page. Keep this scope limited to the two
-  // featured workflows.
+  // the linked image in a new page. Paper figures use the same interaction.
   const workflowMedia = Array.from(document.querySelectorAll(
     '#workflow-stained-glass .workflow-media, #workflow-stained-glass .workflow-result, '
-    + '#workflow-chromatic-duck .workflow-media, #workflow-chromatic-duck .workflow-result',
+    + '#workflow-chromatic-duck .workflow-media, #workflow-chromatic-duck .workflow-result, .paper-figure-link',
   ));
   workflowMedia.forEach((media) => {
     media.setAttribute('aria-haspopup', 'dialog');

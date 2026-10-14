@@ -114,6 +114,38 @@
     const button = document.getElementById('language-toggle');
     if (!button) return;
     const translations = {
+      "BlenderLore acquires reusable procedural knowledge from internet tutorial videos for 3D coding. It turns video evidence into illustrated tutorials, reconstructs editable assets in Blender Python, and extracts reviewed methods for future creation tasks.": "BlenderLore 从互联网教程视频中获取可复用的程序化知识，用于 3D 编程。它将视频证据转换为图文教程，通过 Blender Python 重建可编辑资产，并提取经过审查的方法用于后续创作。",
+      "The collection contains about 22K project instances associated with over 3K tutorial videos from YouTube and Bilibili. Human experts check the final assets built through collection, repair, reconstruction, and cross-tutorial composition.": "该集合包含约 22K 个项目实例，关联来自 YouTube 和 Bilibili 的超过 3K 个教程视频。资产通过采集、修复、重建和跨教程组合构建，并由人工专家检查。",
+      "BlenderLore Skill brings the reconstruction workflow and procedural knowledge library to existing coding agents. Agents retrieve, adapt, and combine methods for new goals, accumulating external knowledge without updating model parameters.": "BlenderLore Skill 将重建工作流和程序化知识库提供给现有编程智能体。智能体通过检索、迁移和组合方法实现新目标，在不更新模型参数的情况下积累外部知识。",
+      "Inside One Sample": "完整样例",
+      "From video evidence to dynamic fur": "从视频证据到动态毛发",
+      "Illustrated steps connect the source video to Blender Python, an animated asset, and reusable procedural knowledge.": "图文步骤将原始视频与 Blender Python、动画资产及可复用的程序化知识联系起来。",
+      "Dynamic fur: tutorial video, illustrated steps, procedural knowledge, code, and reconstructed animation": "动态毛发：教程视频、图文步骤、程序化知识、代码与重建的动画",
+      "Open figure enlarged": "放大查看图片",
+      "Learn, reconstruct, and retain": "学习、重建与积累",
+      "Video evidence becomes an illustrated workflow. A coding agent retrieves knowledge, executes and repairs Blender code, and retains reviewed methods.": "视频证据形成图文工作流。编程智能体检索知识、执行并修复 Blender 代码，再保留经过审查的方法。",
+      "BlenderLore workflow from internet tutorials to verified assets and reviewed procedural knowledge": "BlenderLore 从互联网教程到经过验证的资产与程序化知识的流程",
+      "Generalizing Beyond Tutorials": "超越教程的泛化",
+      "One new asset, three learned methods": "一个新资产，三种已学方法",
+      "Duck GiGi combines static character modeling, rigging and walking transferred from a baby crocodile tutorial, and an iridescent material from a third tutorial.": "Duck GiGi 结合静态角色建模、从小鳄鱼教程迁移的绑定与行走方法，以及第三个教程中的虹彩材质。",
+      "Cross-tutorial composition of Duck GiGi modeling, walking animation, and an iridescent material": "跨教程组合 Duck GiGi 建模、行走动画与虹彩材质",
+      "Generalization": "泛化能力",
+      "Illustrated Workflows": "图文工作流",
+      "Align frames, narration, and interface changes into steps with inputs, operations, parameters, and intermediate results.": "将画面、旁白和界面变化对齐为步骤，记录输入、操作、参数与中间结果。",
+      "Ground in Source Assets": "结合源资产",
+      "Use creator-provided projects when available, repair missing components, and connect demonstrated steps to implementations.": "利用创作者提供的项目，修复缺失组件，将演示步骤关联到具体实现。",
+      "Reconstruct and Inspect": "重建与检查",
+      "Retrieve methods, generate Blender Python, and inspect geometry, appearance, and motion through execution and rendering.": "检索方法、生成 Blender Python，通过执行与渲染检查几何、外观及运动。",
+      "Review and Retain": "审查与保留",
+      "Record each method's source, applicability, implementation, and checks. Human experts review the final assets.": "记录方法的来源、适用范围、实现和检查项，由人工专家审查最终资产。",
+      "Adapt and Combine": "迁移与组合",
+      "Transfer and combine methods across tutorials to create new assets and expand the procedural knowledge library.": "跨教程迁移并组合方法，创造新资产并扩展程序化知识库。",
+      "About 22K project instances associated with over 3K tutorial videos, built through collection, repair, reconstruction, and cross-tutorial composition. Human experts check every final asset.": "通过采集、修复、重建及跨教程组合，构建约 22K 个项目实例，关联超过 3K 个教程视频。人工专家逐一检查最终资产。",
+      "BlenderLore Skill supplies workflow guidance and reviewed methods with sources, applicability, implementation excerpts, and checks. Coding agents retrieve and adapt this knowledge for new 3D tasks.": "BlenderLore Skill 提供工作流指引以及经过审查的方法，包括来源、适用范围、实现片段与检查项。编程智能体检索并迁移这些知识，完成新的 3D 任务。",
+      "Transparent layers create depth and parallax. Procedural patterns, iridescent highlights, and animated reflections turn the source artwork into an editable holographic foil card.": "透明图层形成深度与视差，程序化图案、虹彩高光和动态反射将原始图像转化为可编辑的镭射闪卡。",
+      "A procedural iridescent material transforms Duck Gigi with shifting colors, sparkles, and animated shader parameters while preserving the face, feet, and beak.": "程序化虹彩材质通过变化的色彩、闪光和动态着色器参数改变鸭吉吉的外观，同时保留脸部、脚和喙。",
+      "Image colors and Voronoi boundaries form translucent glass panes with metallic leading. Bump details and controlled distortion adapt the learned material workflow to the Asuka artwork.": "图像色彩与 Voronoi 边界形成带金属铅条的半透明玻璃块。凹凸细节和受控失真将学到的材质工作流应用于明日香图像。",
+      "A reconstructed hair system controls strand length, clumping, shading, and motion. The editable asset connects the visible fur effect to a reusable procedural method.": "重建的毛发系统控制毛发长度、聚束、着色和运动，将可见的毛发效果与可复用的程序化方法联系起来。",
       'Learning 3D coding from real-world 3D creation workflows.': '从真实的 3D 创作流程中学习 3D 编程。',
       'Holographic Foil Card': '镭射闪卡',
       'Iridescent Duck Gigi': '炫彩鸭吉吉',
@@ -173,8 +205,8 @@
       'Collect Tutorials': '收集教程', 'Recover Evidence': '恢复证据', 'Specify the Workflow': '定义工作流', 'Code, Run, Repair': '编码、运行、修复', 'Verify and Retain': '验证与保留',
       'Editable Asset': '可编辑资产', 'Reproduction Script': '复现脚本', 'Reconstruction deliverables': '复现交付物',
       'Materials & Node Graphs': '材质与节点图', 'Final Render': '渲染结果', 'Multi-View Renders': '多视角效果图', 'Animation': '效果动画', 'Agent Log': 'Agent 轨迹'
-      , 'Learning 3D Coding from Internet Tutorial Videos.': '从互联网教程视频中学习程序化 3D 生成'
-      , 'Learning 3D Coding from Internet Tutorial Videos': '从互联网教程视频中学习程序化 3D 生成'
+      , 'Learning 3D Coding from Internet Tutorial Videos.': '从互联网教程视频中学习 3D 编程'
+      , 'Learning 3D Coding from Internet Tutorial Videos': '从互联网教程视频中学习 3D 编程'
       , 'Generalization': '泛化能力'
       , 'Generalization is central to BlenderLore. Successful reconstructions are retained as candidate procedural knowledge. When facing an unfamiliar generation or editing task, the agent decomposes the target into reusable construction patterns, retrieves relevant procedural knowledge and recombines it into task-specific Blender code.': '泛化能力是 BlenderLore 的核心。成功的复现结果会被保留为候选程序化知识。面对未见过的生成或编辑任务时，智能体先将目标分解为可复用的构建模式，检索相关程序化知识，并将其重组为面向具体任务的 Blender 代码。'
       , 'BlenderLore pipeline overview': 'BlenderLore 流程概览'
@@ -279,7 +311,7 @@
       button.setAttribute('aria-label', language === 'zh' ? 'Switch to English' : '切换到中文');
       document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
       document.title = language === 'zh'
-        ? 'BlenderLore：从互联网教程视频中学习程序化 3D 生成'
+        ? 'BlenderLore：从互联网教程视频中学习 3D 编程'
         : 'BlenderLore: Learning 3D Coding from Internet Tutorial Videos';
     }
     const observer = new MutationObserver((records) => {

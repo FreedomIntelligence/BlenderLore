@@ -235,6 +235,83 @@ def encode_data_url_as_jpeg(data_url: str, max_side: int = 960) -> str:
 IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\n]+)\)")
 
 
+def deduplicate_request_images(
+    content: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    result: list[dict[str, Any]] = []
+    seen: dict[tuple[str, str | None], str] = {}
+    aliases: list[dict[str, str]] = []
+    image_id: str | None = None
+    image_number = 0
+
+    for item in content:
+        item_type = item.get("type")
+        if item_type == "text":
+            match = re.search(
+                r"\bIMAGE_ID=([A-Za-z0-9_-]+)", str(item.get("text", ""))
+            )
+            image_id = match.group(1) if match else None
+            result.append(item)
+            continue
+
+        reference = None
+        if item_type == "image_url":
+            image_number += 1
+            reference = image_id or f"attachment position {image_number}"
+        unlabelled = image_id is None
+        image_id = None
+        image = item.get("image_url")
+
+        if (
+            reference is None
+            or not isinstance(image, dict)
+            or set(item) != {"type", "image_url"}
+            or set(image) - {"url", "detail"}
+            or not isinstance(image.get("url"), str)
+            or not image["url"].startswith("data:image/")
+            or (
+                image.get("detail") is not None
+                and not isinstance(image["detail"], str)
+            )
+        ):
+            result.append(item)
+            continue
+
+        key = (image["url"], image.get("detail"))
+        original = seen.get(key)
+        if original is None:
+            seen[key] = reference
+            result.append(item)
+            if unlabelled:
+                result.append(
+                    {
+                        "type": "text",
+                        "text": f"IMAGE_ATTACHMENT_REFERENCE={reference}",
+                    }
+                )
+            continue
+
+        aliases.append(
+            {
+                "image_id": reference,
+                "same_image_as": original,
+                "sha256": hashlib.sha256(image["url"].encode("utf-8")).hexdigest(),
+            }
+        )
+        result.append(
+            {
+                "type": "text",
+                "text": (
+                    f"IMAGE_ALIAS: {reference} uses the same image as "
+                    f"{original}. Refer to that image for the preceding "
+                    "source/role label; both labels remain applicable."
+                ),
+            }
+        )
+
+    return result, aliases
+
+
 def collect_tutorial_images(
     video_dir: Path,
     md_path: Path,
@@ -1525,6 +1602,10 @@ steps_verified.json:
                     },
                 }
             )
+    image_count_before = sum(
+        1 for item in content if item.get("type") == "image_url"
+    )
+    content, image_aliases = deduplicate_request_images(content)
     payload = {
         "model": MODEL,
         "messages": [{"role": "user", "content": content}],
@@ -1546,6 +1627,9 @@ steps_verified.json:
                 "tutorial_chars": len(tutorial),
                 "code_tutorial_chars": len(code_tutorial),
                 "steps_manifest_chars": len(steps_manifest),
+                "image_count_before_dedup": image_count_before,
+                "image_duplicates_removed": len(image_aliases),
+                "image_aliases": image_aliases,
                 "image_count": image_count,
                 "tutorial_images": len(tutorial_images),
                 "evidence_image_limit": EVIDENCE_IMAGE_LIMIT,
